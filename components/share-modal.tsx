@@ -38,8 +38,14 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
     if (urls[platform]) window.open(urls[platform], '_blank', 'width=600,height=400')
   }
 
-  // Most provocative agent = lowest score
-  const provocativeAgent = [...verdict.agents].sort((a, b) => a.score - b.score)[0]
+  // Most provocative agent = furthest absolute distance from the median score
+  const scores = verdict.agents.map(a => a.score)
+  const sorted = [...scores].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  const median = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+  const provocativeAgent = [...verdict.agents].sort(
+    (a, b) => Math.abs(b.score - median) - Math.abs(a.score - median)
+  )[0]
   const provocativeConfig = AGENTS.find(a => a.id === provocativeAgent.id)
 
   return (
