@@ -129,7 +129,7 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-black">
+    <div className="flex flex-col h-full bg-card">
 
       {/* Top toolbar */}
       <div className="flex items-center gap-5 px-4 py-2 border-b border-foreground/10 flex-shrink-0 bg-foreground/[0.02]">

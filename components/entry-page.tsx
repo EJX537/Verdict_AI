@@ -90,12 +90,12 @@ export function EntryPage({ onSubmit }: EntryPageProps) {
                 <span
                   className={`font-mono text-xs ${
                     c.zone === 'Terminal' || c.zone === 'Critical'
-                      ? 'text-[oklch(0.58_0.14_25)]'
+                      ? 'text-danger'
                       : c.zone === 'Guarded'
-                      ? 'text-[oklch(0.72_0.12_55)]'
+                      ? 'text-guarded'
                       : c.zone === 'Stable'
-                      ? 'text-[oklch(0.78_0.09_150)]'
-                      : 'text-[oklch(0.82_0.06_200)]'
+                      ? 'text-stable'
+                      : 'text-thriving'
                   }`}
                 >
                   {c.score}

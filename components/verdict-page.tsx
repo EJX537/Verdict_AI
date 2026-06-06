@@ -320,10 +320,10 @@ function EventCard({
       <div
         className={`px-3 py-2 border-t-2 text-center ${
           isCritical
-            ? 'border-t-[oklch(0.72_0.17_25)] bg-[oklch(0.17_0_0)]'
+            ? 'border-t-[oklch(0.72_0.17_25)] bg-card'
             : isNow
-            ? `border-t-[${ZONE_COLORS[zone]}] bg-[oklch(0.17_0_0)]`
-            : 'border-t-[oklch(0.4_0.1_250)] bg-[oklch(0.16_0_0)]'
+            ? `border-t-[${ZONE_COLORS[zone]}] bg-card`
+            : 'border-t-border bg-card'
         }`}
       >
         <p
@@ -434,7 +434,7 @@ function ScoreHeader({ score, zone, company }: {
       style={{ backgroundColor: tint }}
     >
       <div className="flex items-center gap-4">
-        <span className="font-sans text-6xl font-light text-white leading-none tabular-nums">
+        <span className="font-sans text-6xl font-light text-foreground leading-none tabular-nums">
           {displayed}
         </span>
         <div>

@@ -54,8 +54,8 @@ export function EvidenceFeed({ items }: EvidenceFeedProps) {
                         <span
                           className={`font-mono text-[10px] tabular-nums ${
                             item.delta > 0
-                              ? 'text-[oklch(0.78_0.09_150)]'
-                              : 'text-[oklch(0.58_0.14_25)]'
+                              ? 'text-stable'
+                              : 'text-danger'
                           }`}
                         >
                           {item.delta > 0 ? '+' : ''}{item.delta}
