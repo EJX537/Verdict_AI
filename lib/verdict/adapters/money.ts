@@ -1,22 +1,18 @@
 import type { Finding } from '../types'
 
-// Raw shape from davidsharadbhatt/crunchbase-company-scraper (behind this adapter only).
-// The actor returns 130+ fields; we read only what the signals need.
-export interface CrunchbaseInvestor {
-  name: string
-}
-
-export interface CrunchbaseRound {
-  announced_on: string // ISO date
-  series: string
-  money_raised?: number
-  investors: CrunchbaseInvestor[]
-}
-
+// Normalized shape from davidsharadbhatt/crunchbase-company-scraper---no-api-limits.
+// The actor returns one flat record per company; investors are comma-separated strings.
 export interface CrunchbaseCompany {
   name: string
-  operating_status?: 'active' | 'closed' | 'acquired' | string
-  funding_rounds: CrunchbaseRound[]
+  operatingStatus?: string      // "Operating Status"  e.g. active | closed | acquired
+  totalFundingUsd?: number      // "Total Funding Amount (in USD)"
+  lastFundingDate?: string      // "Last Funding Date" (parseable date)
+  lastFundingType?: string      // "Last Equity Funding Type"
+  topInvestors: string[]        // "Top 5 Investors" split on comma, trimmed
+  leadInvestors: string[]       // "Lead Investors" split on comma, trimmed
+  foundedDate?: string          // "Founded Date"
+  ipoStatus?: string            // "IPO Status"
+  acquisitionStatus?: string    // "Acquisition Status"
 }
 
 export interface MoneyActorInput {
@@ -25,11 +21,11 @@ export interface MoneyActorInput {
   urlList: string
 }
 
-// Third-party scrape, can lag reality, ToS-gray → low provenance (spec: medium-low).
+// Third-party scrape, can lag reality, ToS-gray → low provenance.
 const TIER = 'low' as const
 
 // Known top-tier institutional investors (normalized substrings).
-const TOP_TIER = [
+export const TOP_TIER = [
   'sequoia',
   'andreessen horowitz',
   'a16z',
@@ -52,15 +48,8 @@ const TOP_TIER = [
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24
 
-function days(fromISO: string, toISO: string): number {
-  return (Date.parse(toISO) - Date.parse(fromISO)) / MS_PER_DAY
-}
-
-function topTierCount(round: CrunchbaseRound): number {
-  return round.investors.filter((i) => {
-    const n = i.name.toLowerCase()
-    return TOP_TIER.some((t) => n.includes(t))
-  }).length
+function daysSince(dateISO: string, asOf: string): number {
+  return (Date.parse(asOf) - Date.parse(dateISO)) / MS_PER_DAY
 }
 
 export function buildMoneyInput(company: string): MoneyActorInput {
@@ -69,12 +58,8 @@ export function buildMoneyInput(company: string): MoneyActorInput {
   //
   // `company` may be:
   //   • A full Crunchbase URL  → used as-is
-  //     e.g. "https://www.crunchbase.com/organization/notion-so"
   //   • A bare org slug        → prefixed with the Crunchbase base URL
-  //     e.g. "notion-so"
   //   • A plain company name   → lower-cased + spaces → hyphens (best-effort slug)
-  //     e.g. "Notion" → "notion"  WARNING: this may resolve to the wrong org;
-  //     always prefer passing the canonical slug or full URL when it is known.
   const url = company.startsWith('https://')
     ? company
     : `https://www.crunchbase.com/organization/${company.toLowerCase().replace(/\s+/g, '-')}`
@@ -87,90 +72,113 @@ export function mapMoneyDataset(
 ): Finding[] {
   const findings: Finding[] = []
 
-  // money.operating_status — override input when present (actor may not expose it).
-  const status = company.operating_status
-  if (status === 'closed' || status === 'acquired') {
-    findings.push({
-      signal_id: 'money.operating_status',
-      source_agent: 'money_tracker',
-      value: status,
-      delta: null,
-      direction: 'survival_negative',
-      confidence: 0.7,
-      provenance_tier: TIER,
-      plain_english: `Crunchbase lists operating status as "${status}"`,
-      as_of: asOf,
-    })
-  } else if (status === 'active') {
-    findings.push({
-      signal_id: 'money.operating_status',
-      source_agent: 'money_tracker',
-      value: status,
-      delta: null,
-      direction: 'survival_positive',
-      confidence: 0.4,
-      provenance_tier: TIER,
-      plain_english: 'Crunchbase lists operating status as "active"',
-      as_of: asOf,
-    })
+  // money.operating_status — closed/acquired → negative; active → positive.
+  // Emits only when operatingStatus is present.
+  const status = company.operatingStatus
+  if (status !== undefined) {
+    if (status === 'closed' || status === 'acquired') {
+      findings.push({
+        signal_id: 'money.operating_status',
+        source_agent: 'money_tracker',
+        value: status,
+        delta: null,
+        direction: 'survival_negative',
+        confidence: 0.7,
+        provenance_tier: TIER,
+        plain_english: `Crunchbase lists the company as "${status}" — no longer operating independently`,
+        as_of: asOf,
+      })
+    } else if (status === 'active') {
+      findings.push({
+        signal_id: 'money.operating_status',
+        source_agent: 'money_tracker',
+        value: status,
+        delta: null,
+        direction: 'survival_positive',
+        confidence: 0.4,
+        provenance_tier: TIER,
+        plain_english: 'Crunchbase lists the company as "active"',
+        as_of: asOf,
+      })
+    }
   }
 
-  const rounds = [...company.funding_rounds].sort((a, b) =>
-    a.announced_on.localeCompare(b.announced_on),
-  )
-
-  // money.round_gap — gap since last round vs prior cadence; widening → negative.
-  if (rounds.length >= 2) {
-    const priorGaps: number[] = []
-    for (let i = 1; i < rounds.length; i++) {
-      priorGaps.push(days(rounds[i - 1].announced_on, rounds[i].announced_on))
+  // money.funding_recency — days since lastFundingDate vs asOf.
+  // Emits only when lastFundingDate is present.
+  if (company.lastFundingDate !== undefined) {
+    const dayCount = Math.round(daysSince(company.lastFundingDate, asOf))
+    let direction: Finding['direction']
+    let description: string
+    if (dayCount > 730) {
+      direction = 'survival_negative'
+      description = `Last funding was ${dayCount} days ago — more than two years with no new round`
+    } else if (dayCount <= 365) {
+      direction = 'survival_positive'
+      description = `Last funding was ${dayCount} days ago — raised within the past year`
+    } else {
+      direction = 'neutral'
+      description = `Last funding was ${dayCount} days ago — between one and two years`
     }
-    const cadence = priorGaps.reduce((a, b) => a + b, 0) / priorGaps.length
-    const lastRound = rounds[rounds.length - 1]
-    const lastGap = days(lastRound.announced_on, asOf)
-    const widening = lastGap > cadence * 1.5
     findings.push({
-      signal_id: 'money.round_gap',
+      signal_id: 'money.funding_recency',
       source_agent: 'money_tracker',
-      value: Math.round(lastGap),
-      delta: Math.round(lastGap - cadence),
-      direction: widening ? 'survival_negative' : 'neutral',
+      value: dayCount,
+      delta: null,
+      direction,
       confidence: 0.5,
       provenance_tier: TIER,
-      plain_english: widening
-        ? `No new round in ~${Math.round(lastGap)}d, well past the ~${Math.round(cadence)}d prior cadence`
-        : `Last round ~${Math.round(lastGap)}d ago, within prior ~${Math.round(cadence)}d cadence`,
+      plain_english: description,
       as_of: asOf,
     })
   }
 
-  // money.investor_tier — trajectory of investor quality across rounds.
-  if (rounds.length >= 2) {
-    const latest = rounds[rounds.length - 1]
-    const earlier = rounds.slice(0, -1)
-    const latestScore = topTierCount(latest)
-    const earlierMax = Math.max(...earlier.map(topTierCount))
-    let trend: 'up' | 'down' | 'flat'
+  // money.investor_quality — count of TOP_TIER substrings across topInvestors ∪ leadInvestors.
+  // Emits when topInvestors and leadInvestors fields are present (even if empty).
+  const allInvestors = [...company.topInvestors, ...company.leadInvestors]
+  const tierCount = allInvestors.filter((name) => {
+    const lower = name.toLowerCase()
+    return TOP_TIER.some((t) => lower.includes(t))
+  }).length
+  findings.push({
+    signal_id: 'money.investor_quality',
+    source_agent: 'money_tracker',
+    value: tierCount,
+    delta: null,
+    direction: tierCount >= 1 ? 'survival_positive' : 'neutral',
+    confidence: 0.5,
+    provenance_tier: TIER,
+    plain_english:
+      tierCount >= 1
+        ? `${tierCount} top-tier institutional investor(s) identified among known backers`
+        : 'No top-tier institutional investors identified among known backers',
+    as_of: asOf,
+  })
+
+  // money.total_funding_tier — absolute funding scale.
+  // Emits only when totalFundingUsd is present.
+  if (company.totalFundingUsd !== undefined) {
+    const amount = company.totalFundingUsd
     let direction: Finding['direction']
-    if (latestScore > earlierMax) {
-      trend = 'up'
+    let description: string
+    if (amount >= 50_000_000) {
       direction = 'survival_positive'
-    } else if (latestScore < earlierMax) {
-      trend = 'down'
+      description = `Total funding of $${(amount / 1_000_000).toFixed(0)}M indicates well-capitalised scale`
+    } else if (amount < 2_000_000) {
       direction = 'survival_negative'
+      description = `Total funding of $${(amount / 1_000).toFixed(0)}K is below the $2M threshold — pre-scale risk`
     } else {
-      trend = 'flat'
       direction = 'neutral'
+      description = `Total funding of $${(amount / 1_000_000).toFixed(1)}M is between early-stage and scale benchmarks`
     }
     findings.push({
-      signal_id: 'money.investor_tier',
+      signal_id: 'money.total_funding_tier',
       source_agent: 'money_tracker',
-      value: trend,
-      delta: latestScore - earlierMax,
+      value: amount,
+      delta: null,
       direction,
-      confidence: 0.45,
+      confidence: 0.4,
       provenance_tier: TIER,
-      plain_english: `Investor quality trajectory across rounds is trending ${trend}`,
+      plain_english: description,
       as_of: asOf,
     })
   }
