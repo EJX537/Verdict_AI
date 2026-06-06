@@ -56,7 +56,7 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
           <h2 className="font-mono text-sm uppercase tracking-widest text-foreground">Share verdict</h2>
           <button
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors text-lg"
+            className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors text-lg"
           >
             ✕
           </button>
@@ -144,7 +144,7 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
               />
               <button
                 onClick={handleCopyUrl}
-                className="px-4 py-2 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest hover:bg-foreground/85 transition-colors rounded whitespace-nowrap"
+                className="cursor-pointer px-4 py-2 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest hover:bg-foreground/85 transition-colors rounded whitespace-nowrap"
               >
                 {copied ? 'Copied' : 'Copy'}
               </button>
@@ -155,13 +155,13 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
           <div className="flex gap-3">
             <button
               onClick={() => handleShare('twitter')}
-              className="flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors rounded"
+              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors rounded"
             >
               Twitter
             </button>
             <button
               onClick={() => handleShare('linkedin')}
-              className="flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors rounded"
+              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors rounded"
             >
               LinkedIn
             </button>

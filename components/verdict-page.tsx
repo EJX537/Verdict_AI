@@ -544,8 +544,8 @@ function ActionBar({ company, score, zone, verdict, onCompare, onReset }: {
   const [shareOpen, setShareOpen] = useState(false)
 
   const inputCls = 'flex-1 bg-muted border border-border px-3 py-2 font-sans text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40'
-  const submitCls = 'px-4 py-2 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest whitespace-nowrap hover:bg-foreground/85 transition-colors'
-  const btnCls = 'font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40 whitespace-nowrap'
+  const submitCls = 'cursor-pointer px-4 py-2 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest whitespace-nowrap hover:bg-foreground/85 transition-colors'
+  const btnCls = 'cursor-pointer font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40 whitespace-nowrap'
 
   return (
     <div className="flex flex-wrap gap-3 items-center px-8 py-4 border-t border-border bg-background">
