@@ -58,7 +58,7 @@ export function EntryPage({ onSubmit }: EntryPageProps) {
             <button
               type="submit"
               disabled={!value.trim()}
-              className="absolute right-0 top-0 bottom-0 px-5 font-mono text-xs tracking-widest uppercase text-background bg-foreground disabled:bg-muted disabled:text-muted-foreground transition-colors duration-150 hover:bg-foreground/90"
+              className="cursor-pointer absolute right-0 top-0 bottom-0 px-5 font-mono text-xs tracking-widest uppercase text-background bg-foreground disabled:bg-muted disabled:text-muted-foreground transition-colors duration-150 hover:bg-foreground/90"
             >
               Open the case
             </button>
@@ -82,7 +82,7 @@ export function EntryPage({ onSubmit }: EntryPageProps) {
               <button
                 key={i}
                 onClick={() => onSubmit(c.company)}
-                className="inline-flex items-center gap-3 px-6 py-1.5 group"
+                className="cursor-pointer inline-flex items-center gap-3 px-6 py-1.5 group"
               >
                 <span className="font-sans text-sm font-medium text-foreground/70 group-hover:text-foreground transition-colors">
                   {c.company}

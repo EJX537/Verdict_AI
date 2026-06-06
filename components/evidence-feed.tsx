@@ -20,8 +20,8 @@ export function EvidenceFeed({ items }: EvidenceFeedProps) {
         </span>
       </div>
 
-      {/* Items */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Items — full height, scrollbar hidden */}
+      <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {items.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest">

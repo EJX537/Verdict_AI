@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react'
 
 interface TopBarProps {
   company: string
-  status: 'investigating' | 'filing' | 'complete'
+  status: 'investigating' | 'filing' | 'complete' | 'ready'
+  onConfirmVerdict?: () => void
 }
 
-export function TopBar({ company, status }: TopBarProps) {
+export function TopBar({ company, status, onConfirmVerdict }: TopBarProps) {
   const [elapsed, setElapsed] = useState(0)
 
   useEffect(() => {
@@ -25,6 +26,8 @@ export function TopBar({ company, status }: TopBarProps) {
       ? 'Investigating...'
       : status === 'filing'
       ? 'Filing verdict...'
+      : status === 'ready'
+      ? 'Awaiting confirmation'
       : 'Verdict filed'
 
   return (
@@ -39,6 +42,16 @@ export function TopBar({ company, status }: TopBarProps) {
       </div>
 
       <div className="flex items-center gap-6">
+        {/* Ready — confirm button lives inline in the top bar */}
+        {status === 'ready' && onConfirmVerdict && (
+          <button
+            onClick={onConfirmVerdict}
+            className="cursor-pointer font-mono text-xs tracking-[0.2em] uppercase bg-foreground text-background px-4 py-1.5 hover:bg-foreground/90 transition-colors"
+          >
+            Render verdict
+          </button>
+        )}
+
         {/* Status */}
         <div className="flex items-center gap-2">
           {status !== 'complete' && (
