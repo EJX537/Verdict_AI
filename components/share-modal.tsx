@@ -77,8 +77,8 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
         {verdict.zone.toUpperCase()}
       </text>
 
-      {/* Company — moved to right of score */}
-      <text x={42} y={100} fontFamily="ui-monospace, monospace" fontSize={13} fontWeight={500} fill="rgba(255,255,255,0.5)" letterSpacing={1}>
+      {/* Company */}
+      <text x={42} y={140} fontFamily="ui-monospace, monospace" fontSize={11} fill="rgba(255,255,255,0.4)" letterSpacing={1}>
         {company.toUpperCase()}
       </text>
 
@@ -101,8 +101,8 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
             <rect x={trackX} y={rowY - 2} width={trackW} height={4} rx={1} fill="rgba(255,255,255,0.08)" dominantBaseline="middle" />
             {/* Fill */}
             <rect x={trackX} y={rowY - 2} width={fillW} height={4} rx={1} fill={cfg?.chartColor ?? '#fff'} />
-            {/* Score value right-aligned — much larger */}
-            <text x={W - 40} y={rowY + 4} fontFamily="ui-monospace, monospace" fontSize={38} fontWeight={600} fill="rgba(255,255,255,0.85)" textAnchor="end" dominantBaseline="middle">
+            {/* Score value right-aligned */}
+            <text x={W - 40} y={rowY} fontFamily="ui-monospace, monospace" fontSize={12} fontWeight={600} fill="rgba(255,255,255,0.8)" textAnchor="end" dominantBaseline="middle">
               {a.score.toFixed(1)}
             </text>
           </g>
@@ -149,7 +149,7 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
 
       {/* Agent summary lines */}
       {summaryLines.slice(0, 2).map((line, i) => (
-        <text key={i} x={40} y={344 + i * 16} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={13} fill="rgba(255,255,255,0.75)">
+        <text key={i} x={40} y={344 + i * 16} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={11} fill="rgba(255,255,255,0.75)">
           {line}
         </text>
       ))}
