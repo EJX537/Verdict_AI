@@ -56,6 +56,7 @@ export interface CreateDealInput {
 export interface Store {
   createThesis(t: CreateThesisInput): Promise<{ id: string }>
   getThesis(id: string): Promise<ThesisRow | null>
+  listTheses(): Promise<ThesisRow[]>
   createDeal(input: CreateDealInput): Promise<DealRow>
   getDeal(id: string): Promise<DealRow | null>
   listDeals(): Promise<DealRow[]>
@@ -95,6 +96,15 @@ export const dbStore: Store = {
     if (error) throw new Error(`getThesis: ${error.message}`)
     const rows = data as ThesisRow[]
     return rows.length > 0 ? rows[0] : null
+  },
+
+  async listTheses() {
+    const { data, error } = await serverClient.database
+      .from('theses')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) throw new Error(`listTheses: ${error.message}`)
+    return (data as ThesisRow[]) ?? []
   },
 
   async createDeal(input) {

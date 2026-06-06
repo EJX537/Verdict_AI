@@ -1,6 +1,16 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { dbStore } from '@/lib/verdict/store'
 
+export async function GET() {
+  try {
+    const theses = await dbStore.listTheses()
+    return NextResponse.json(theses)
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Internal error'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
+
 export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
