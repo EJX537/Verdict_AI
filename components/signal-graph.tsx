@@ -35,7 +35,12 @@ interface SignalGraphProps {
 }
 
 export function SignalGraph({ points }: SignalGraphProps) {
-  const labels = points.map((_, i) => i)
+  const labels = points.map((_, i) => {
+    // Show a time label every ~10 points to avoid crowding
+    if (i === 0) return 'T+0'
+    if (i % 10 === 0) return `T+${i}`
+    return ''
+  })
 
   const datasets = (Object.keys(AGENT_COLORS) as (keyof typeof AGENT_COLORS)[]).map((id) => ({
     label: AGENT_NAMES[id],
@@ -57,13 +62,28 @@ export function SignalGraph({ points }: SignalGraphProps) {
     interaction: { mode: 'index', intersect: false },
     scales: {
       x: {
-        display: false,
+        display: true,
+        grid: {
+          color: 'rgba(255,255,255,0.05)',
+          lineWidth: 1,
+          drawTicks: false,
+        },
+        border: { display: false },
+        ticks: {
+          color: 'rgba(255,255,255,0.3)',
+          font: { family: 'var(--font-mono)', size: 9 },
+          maxRotation: 0,
+          padding: 8,
+          autoSkip: false,
+          // Only render ticks that have a label value
+          callback: (_val, index) => labels[index] || null,
+        },
       },
       y: {
         min: 0,
         max: 10,
         display: true,
-        position: 'left',
+        position: 'right',
         grid: {
           color: 'rgba(255,255,255,0.08)',
           lineWidth: 1,
