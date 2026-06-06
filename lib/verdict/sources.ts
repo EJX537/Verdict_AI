@@ -102,16 +102,34 @@ export function normalizeCrunchbaseRecord(raw: Record<string, unknown>): Crunchb
 }
 
 /**
+ * Case-insensitive substring containment check for company name matching.
+ * Returns true if either normalized string contains the other.
+ * Guards against empty strings (empty → no match).
+ */
+export function companyMatches(a: string, b: string): boolean {
+  const na = a.trim().toLowerCase()
+  const nb = b.trim().toLowerCase()
+  if (!na || !nb) return false
+  return na.includes(nb) || nb.includes(na)
+}
+
+/**
  * Normalize a raw LinkedIn employee row into LinkedInEmployee.
  *
  * Confirmed against linkedin.sample.json:
  *   - name       ← `${firstName} ${lastName}`.trim()
  *   - title      ← headline, else currentPosition[0].position, else ''
  *   - profileUrl ← linkedinUrl
- *   - isCurrent  ← Array.isArray(currentPosition) && currentPosition.length > 0
- *   - isFounder  ← /founder|co[-\s]?founder/i on title
+ *   - isCurrent  ← employee has a currentPosition entry whose companyName matches
+ *                  the queried company (target-company-aware)
+ *   - isFounder  ← employee has a currentPosition entry where position matches
+ *                  /founder|co[-\s]?founder/i AND companyName matches the queried
+ *                  company (target-company-aware)
+ *
+ * @param raw     Raw actor row.
+ * @param company The queried company name (used for target-company-aware checks).
  */
-export function normalizeLinkedInRow(raw: Record<string, unknown>): LinkedInEmployee {
+export function normalizeLinkedInRow(raw: Record<string, unknown>, company = ''): LinkedInEmployee {
   const firstName = typeof raw.firstName === 'string' ? raw.firstName : ''
   const lastName = typeof raw.lastName === 'string' ? raw.lastName : ''
   const name = `${firstName} ${lastName}`.trim()
@@ -130,9 +148,21 @@ export function normalizeLinkedInRow(raw: Record<string, unknown>): LinkedInEmpl
   const profileUrl =
     typeof raw.linkedinUrl === 'string' ? raw.linkedinUrl : ''
 
-  const isCurrent = Array.isArray(raw.currentPosition) && (raw.currentPosition as unknown[]).length > 0
-
-  const isFounder = /founder|co[-\s]?founder/i.test(title)
+  // Target-company-aware: scan all currentPosition entries for this company.
+  let isCurrent = false
+  let isFounder = false
+  if (Array.isArray(cp)) {
+    for (const entry of cp as Record<string, unknown>[]) {
+      const entryCompany = typeof entry.companyName === 'string' ? entry.companyName : ''
+      if (companyMatches(entryCompany, company)) {
+        isCurrent = true
+        const entryPosition = typeof entry.position === 'string' ? entry.position : ''
+        if (/founder|co[-\s]?founder/i.test(entryPosition)) {
+          isFounder = true
+        }
+      }
+    }
+  }
 
   return { name, title, profileUrl, isCurrent, isFounder }
 }
@@ -262,11 +292,10 @@ export async function fetchPeople(
   const rows = await run(ACTORS.people, input as unknown as Record<string, unknown>)
 
   const employees: LinkedInEmployee[] = (rows as Record<string, unknown>[]).map(
-    normalizeLinkedInRow,
+    (row) => normalizeLinkedInRow(row, company),
   )
-  // Only pass employees that are currently active (isCurrent).
-  const current = employees.filter((e) => e.isCurrent)
-  return mapPeopleDataset(current, asOf)
+  // Pass all normalized employees — the adapter's isCurrent checks own filtering.
+  return mapPeopleDataset(employees, asOf)
 }
 
 /**

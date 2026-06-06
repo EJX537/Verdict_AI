@@ -18,6 +18,7 @@ import {
   normalizeGoogleNewsRow,
   normalizePRNewswireRow,
   normalizeWaybackRow,
+  companyMatches,
 } from './sources'
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -132,14 +133,16 @@ describe('fetchPeople — Notion fixture', () => {
     expect(f).toBeDefined()
   })
 
-  it('people.founder_present is truthy (Maria has "Founder" in headline and is current)', async () => {
+  it('people.founder_present is neutral for Notion fixture (no employee has a founder currentPosition at Notion)', async () => {
     const findings = await fetchPeople('Notion', AS_OF, fakeRun)
     const f = findings.find((x) => x.signal_id === 'people.founder_present')
     expect(f).toBeDefined()
-    // Maria Ledentsova has "Founder @launchanyway" in her headline and has an
-    // active currentPosition — so isFounder=true and isCurrent=true.
-    expect(f!.value).toBe(true)
-    expect(f!.direction).toBe('survival_positive')
+    // Maria Ledentsova's headline says "Founder @launchanyway" but her
+    // currentPosition is at "launch/anyway", not Notion.  No employee in the
+    // scraped roster has a founder-titled currentPosition at Notion, so the
+    // target-company-aware check correctly yields neutral.
+    expect(f!.value).toBe(false)
+    expect(f!.direction).toBe('neutral')
   })
 
   it('produces a people.leadership_visible finding', async () => {
@@ -260,7 +263,8 @@ describe('normalizeCrunchbaseRecord', () => {
 describe('normalizeLinkedInRow', () => {
   it('maps firstName+lastName → name, headline → title, linkedinUrl → profileUrl', () => {
     const raw = linkedinFixture[0] as Record<string, unknown>
-    const emp = normalizeLinkedInRow(raw)
+    // Pass 'Notion' so isCurrent reflects membership at the queried company.
+    const emp = normalizeLinkedInRow(raw, 'Notion')
 
     expect(emp.name).toBe('Susan Dettmar')
     expect(emp.title).toBe('Head of Commercial Sales @ Notion | The best AI for Work')
@@ -269,15 +273,82 @@ describe('normalizeLinkedInRow', () => {
     expect(emp.isFounder).toBe(false)
   })
 
-  it('detects founder from headline', () => {
-    // Maria Ledentsova has "Founder @launchanyway" in headline
+  it('Maria Ledentsova: isFounder=false and isCurrent=false when queried for Notion (her currentPosition is at launch/anyway)', () => {
+    // Maria's headline says "Founder @launchanyway" but her currentPosition
+    // companyName is "launch/anyway", not Notion.  The target-company-aware
+    // logic must NOT flag her as a Notion founder.
     const mariaRaw = linkedinFixture.find(
       (r) => (r as Record<string, unknown>).firstName === 'Maria',
     ) as Record<string, unknown>
     expect(mariaRaw).toBeDefined()
-    const emp = normalizeLinkedInRow(mariaRaw)
-    expect(emp.isFounder).toBe(true)
+    const emp = normalizeLinkedInRow(mariaRaw, 'Notion')
+    expect(emp.isFounder).toBe(false)
+    expect(emp.isCurrent).toBe(false)
+  })
+})
+
+describe('normalizeLinkedInRow — target-company-aware logic', () => {
+  it('(a) detects isFounder=true when currentPosition has founder title at the queried company', () => {
+    const raw = {
+      firstName: 'Alice',
+      lastName: 'Smith',
+      headline: '',
+      linkedinUrl: 'https://www.linkedin.com/in/alice',
+      currentPosition: [
+        { position: 'Co-Founder', companyName: 'Notion', companyLinkedinUrl: '' },
+      ],
+    }
+    const emp = normalizeLinkedInRow(raw, 'Notion')
     expect(emp.isCurrent).toBe(true)
+    expect(emp.isFounder).toBe(true)
+  })
+
+  it('(b) isFounder=false and isCurrent=false when founder title is at a different company', () => {
+    const raw = {
+      firstName: 'Bob',
+      lastName: 'Jones',
+      headline: 'Founder of everything',
+      linkedinUrl: 'https://www.linkedin.com/in/bob',
+      currentPosition: [
+        { position: 'Founder', companyName: 'OtherCo', companyLinkedinUrl: '' },
+      ],
+    }
+    const emp = normalizeLinkedInRow(raw, 'Notion')
+    expect(emp.isCurrent).toBe(false)
+    expect(emp.isFounder).toBe(false)
+  })
+
+  it('isCurrent=false and isFounder=false when currentPosition is missing', () => {
+    const raw = {
+      firstName: 'Carol',
+      lastName: 'Doe',
+      headline: 'Founder @ Notion',
+      linkedinUrl: 'https://www.linkedin.com/in/carol',
+    }
+    const emp = normalizeLinkedInRow(raw, 'Notion')
+    expect(emp.isCurrent).toBe(false)
+    expect(emp.isFounder).toBe(false)
+  })
+})
+
+describe('companyMatches', () => {
+  it('matches identical names case-insensitively', () => {
+    expect(companyMatches('Notion', 'notion')).toBe(true)
+  })
+
+  it('matches when one name contains the other (e.g. "Notion" vs "Notion Labs, Inc.")', () => {
+    expect(companyMatches('Notion', 'Notion Labs, Inc.')).toBe(true)
+    expect(companyMatches('Notion Labs, Inc.', 'Notion')).toBe(true)
+  })
+
+  it('returns false for unrelated names', () => {
+    expect(companyMatches('Notion', 'OtherCo')).toBe(false)
+  })
+
+  it('returns false when either argument is empty', () => {
+    expect(companyMatches('', 'Notion')).toBe(false)
+    expect(companyMatches('Notion', '')).toBe(false)
+    expect(companyMatches('', '')).toBe(false)
   })
 })
 
