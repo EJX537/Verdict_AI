@@ -39,18 +39,18 @@ function ScoreBlock({ score, zone }: ScoreBlockProps) {
 
   return (
     <div
-      className="text-center py-16 transition-all duration-1000"
+      className="p-6 border border-border transition-all duration-1000"
       style={{ backgroundColor: tint }}
     >
-      <p className="font-mono text-xs tracking-[0.3em] uppercase text-muted-foreground mb-6">
-        Verdict
+      <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground mb-3">
+        Verdict Score
       </p>
-      <div className="score-reveal">
-        <span className="font-sans text-[9rem] font-light text-foreground leading-none tabular-nums">
+      <div className="score-reveal mb-2">
+        <span className="font-sans text-5xl font-light text-white leading-none tabular-nums">
           {displayed}
         </span>
       </div>
-      <p className={`font-mono text-sm tracking-[0.25em] uppercase mt-4 ${zoneColors[zone]}`}>
+      <p className={`font-mono text-xs tracking-[0.2em] uppercase ${zoneColors[zone]}`}>
         {zone}
       </p>
     </div>
@@ -63,25 +63,22 @@ interface SignalCardsProps {
 
 function SignalCards({ agents }: SignalCardsProps) {
   return (
-    <div className="grid grid-cols-2 gap-px bg-border">
+    <div className="border border-border">
       {agents.map((a) => {
         const config = AGENTS.find((ag) => ag.id === a.id)!
         return (
-          <div key={a.id} className="bg-card p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className={`font-mono text-[10px] tracking-[0.2em] uppercase ${config.colorClass}`}>
+          <div key={a.id} className="border-b border-border last:border-b-0 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className={`font-mono text-[9px] tracking-[0.2em] uppercase ${config.colorClass}`}>
                 {config.name}
               </span>
-              <span className={`font-mono text-sm font-medium ${config.colorClass}`}>
+              <span className={`font-mono text-xs font-medium ${config.colorClass}`}>
                 {a.score}/10
               </span>
             </div>
-            <p className="font-sans text-xs leading-relaxed text-foreground/80 mb-3">
+            <p className="font-sans text-xs leading-relaxed text-foreground/80">
               {a.summary}
             </p>
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {a.sourceCount} sources
-            </span>
           </div>
         )
       })}
@@ -97,37 +94,37 @@ interface PatternMatchProps {
 
 function PatternMatch({ closestDead, closestAlive, fork }: PatternMatchProps) {
   return (
-    <div className="border border-border p-6">
-      <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground mb-5">
+    <div className="border border-border p-4">
+      <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground mb-3">
         Pattern Match
       </p>
-      <div className="grid grid-cols-2 gap-4 mb-5">
-        <div className="border border-[oklch(0.65_0.14_25/0.4)] bg-[oklch(0.65_0.14_25/0.06)] p-4">
-          <p className="font-mono text-[10px] uppercase tracking-wide text-[oklch(0.65_0.14_25)] mb-2">
+      <div className="space-y-3 mb-3 text-sm">
+        <div className="border border-[oklch(0.65_0.14_25/0.4)] bg-[oklch(0.65_0.14_25/0.06)] p-3">
+          <p className="font-mono text-[8px] uppercase tracking-wide text-[oklch(0.65_0.14_25)] mb-1">
             Closest Dead
           </p>
-          <p className="font-sans text-sm font-medium text-foreground mb-1">{closestDead.name}</p>
-          <p className="font-mono text-xs text-muted-foreground mb-2">
+          <p className="font-sans text-xs font-medium text-foreground mb-0.5">{closestDead.name}</p>
+          <p className="font-mono text-[10px] text-muted-foreground mb-1">
             {closestDead.match}% match
           </p>
-          <p className="font-sans text-xs text-foreground/80 leading-relaxed">
-            Cause: {closestDead.cause}
+          <p className="font-sans text-[11px] text-foreground/80 leading-tight">
+            {closestDead.cause}
           </p>
         </div>
-        <div className="border border-[oklch(0.82_0.09_150/0.4)] bg-[oklch(0.82_0.09_150/0.06)] p-4">
-          <p className="font-mono text-[10px] uppercase tracking-wide text-[oklch(0.82_0.09_150)] mb-2">
+        <div className="border border-[oklch(0.82_0.09_150/0.4)] bg-[oklch(0.82_0.09_150/0.06)] p-3">
+          <p className="font-mono text-[8px] uppercase tracking-wide text-[oklch(0.82_0.09_150)] mb-1">
             Closest Living
           </p>
-          <p className="font-sans text-sm font-medium text-foreground mb-1">{closestAlive.name}</p>
-          <p className="font-mono text-xs text-muted-foreground mb-2">
+          <p className="font-sans text-xs font-medium text-foreground mb-0.5">{closestAlive.name}</p>
+          <p className="font-mono text-[10px] text-muted-foreground mb-1">
             {closestAlive.match}% match
           </p>
-          <p className="font-sans text-xs text-foreground/80 leading-relaxed">
-            Saved by: {closestAlive.what}
+          <p className="font-sans text-[11px] text-foreground/80 leading-tight">
+            {closestAlive.what}
           </p>
         </div>
       </div>
-      <p className="font-sans text-sm text-foreground/80 leading-relaxed border-t border-border pt-4">
+      <p className="font-sans text-[11px] text-foreground/80 leading-tight border-t border-border pt-2">
         {fork}
       </p>
     </div>
@@ -140,77 +137,90 @@ interface CounterfactualProps {
 
 function Counterfactual({ text }: CounterfactualProps) {
   return (
-    <div className="border border-border p-6">
-      <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground mb-4">
+    <div className="border border-border p-4">
+      <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground mb-3">
         Counterfactual
       </p>
-      <p className="font-sans text-sm leading-relaxed text-foreground/80">
+      <p className="font-sans text-xs leading-relaxed text-foreground/80">
         {text}
       </p>
     </div>
   )
 }
 
-interface TimelineScrubberProps {
+interface VerticalTimelineProps {
   events: VerdictData['timeline']
 }
 
-function TimelineScrubber({ events }: TimelineScrubberProps) {
+function VerticalTimeline({ events }: VerticalTimelineProps) {
   const [scrubValue, setScrubValue] = useState(100)
   const maxT = events[events.length - 1]?.t ?? 100
   const visibleUpTo = (scrubValue / 100) * maxT
 
   return (
-    <div className="border border-border p-6">
-      <div className="flex items-center justify-between mb-5">
+    <div className="flex flex-col h-full border border-border p-6 bg-background/50">
+      <div className="flex items-center justify-between mb-6">
         <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground">
           Timeline
         </p>
         <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
-          Month {Math.round(visibleUpTo)}
+          M{Math.round(visibleUpTo)}
         </span>
       </div>
 
-      {/* Event track */}
-      <div className="relative mb-4">
-        <div className="h-px bg-border w-full" />
-        {events.map((ev) => {
-          const pct = (ev.t / maxT) * 100
-          const visible = ev.t <= visibleUpTo
-          return (
-            <div
-              key={ev.t}
-              className={`absolute top-0 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${visible ? 'opacity-100' : 'opacity-25'}`}
-              style={{ left: `${pct}%` }}
-            >
+      {/* Vertical event list */}
+      <div className="flex-1 relative overflow-y-auto pr-4 mb-6">
+        {/* Vertical line */}
+        <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
+
+        {/* Events stacked vertically */}
+        <div className="space-y-6 relative">
+          {events.map((ev) => {
+            const visible = ev.t <= visibleUpTo
+            return (
               <div
-                className={`w-2 h-2 rounded-full border ${ev.critical ? 'border-[oklch(0.65_0.14_25)] bg-[oklch(0.65_0.14_25/0.5)]' : 'border-muted-foreground bg-background'}`}
-              />
-              <div
-                className={`absolute top-3 -translate-x-1/2 whitespace-nowrap font-mono text-[9px] ${
-                  ev.critical ? 'text-[oklch(0.65_0.14_25)]' : 'text-muted-foreground'
-                }`}
-                style={{ left: '50%' }}
+                key={ev.t}
+                className={`flex gap-3 items-start transition-all duration-300 ${visible ? 'opacity-100' : 'opacity-30'}`}
               >
-                {ev.label}
+                {/* Dot on the left */}
+                <div className="relative flex-shrink-0 mt-0.5">
+                  <div
+                    className={`w-2 h-2 rounded-full border ${
+                      ev.critical
+                        ? 'border-[oklch(0.65_0.14_25)] bg-[oklch(0.65_0.14_25/0.5)]'
+                        : 'border-muted-foreground bg-background'
+                    }`}
+                  />
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 pt-0.5">
+                  <p
+                    className={`font-mono text-xs font-medium ${
+                      ev.critical ? 'text-[oklch(0.65_0.14_25)]' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {ev.label}
+                  </p>
+                  {ev.label === 'Now' && (
+                    <div className="w-full h-px bg-foreground/40 mt-2" />
+                  )}
+                </div>
               </div>
-              {ev.label === 'Now' && (
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 h-4 w-px bg-foreground/40" />
-              )}
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
       {/* Scrubber */}
-      <div className="mt-8">
+      <div className="pt-4 border-t border-border">
         <input
           type="range"
           min={0}
           max={100}
           value={scrubValue}
           onChange={(e) => setScrubValue(Number(e.target.value))}
-          className="w-full accent-foreground h-px bg-border appearance-none cursor-pointer"
+          className="w-full h-1 bg-border appearance-none cursor-pointer"
           style={{
             WebkitAppearance: 'none',
             background: `linear-gradient(to right, oklch(0.55 0 0) ${scrubValue}%, oklch(0.22 0 0) ${scrubValue}%)`,
@@ -243,8 +253,8 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
   }
 
   return (
-    <div className="border-t border-border p-6">
-      <div className="flex items-start gap-3">
+    <div className="border-t border-border p-4 space-y-2 text-sm">
+      <div className="flex items-start gap-2">
         {/* Challenge */}
         <div className="flex-1">
           {challenging ? (
@@ -254,33 +264,26 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
                 setChallenging(false)
                 setChallengeText('')
               }}
-              className="flex gap-2"
+              className="flex gap-1"
             >
               <input
                 autoFocus
                 value={challengeText}
                 onChange={(e) => setChallengeText(e.target.value)}
                 placeholder="What signal did we miss?"
-                className="flex-1 bg-muted border border-border px-3 py-1.5 font-sans text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40"
+                className="flex-1 bg-muted border border-border px-2 py-1 font-sans text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40"
               />
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-foreground text-background font-mono text-[10px] uppercase tracking-widest"
+                className="px-2 py-1 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest whitespace-nowrap"
               >
                 Re-run
-              </button>
-              <button
-                type="button"
-                onClick={() => setChallenging(false)}
-                className="px-3 py-1.5 border border-border font-mono text-[10px] text-foreground/70 uppercase tracking-widest"
-              >
-                Cancel
               </button>
             </form>
           ) : (
             <button
               onClick={() => setChallenging(true)}
-              className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
+              className="font-mono text-[9px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-2 py-1 hover:border-foreground/40 whitespace-nowrap"
             >
               Was I wrong?
             </button>
@@ -288,7 +291,7 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
         </div>
 
         {/* Compare */}
-        <div>
+        <div className="flex-1">
           {comparing ? (
             <form
               onSubmit={(e) => {
@@ -299,51 +302,45 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
                   setCompareText('')
                 }
               }}
-              className="flex gap-2"
+              className="flex gap-1"
             >
               <input
                 autoFocus
                 value={compareText}
                 onChange={(e) => setCompareText(e.target.value)}
                 placeholder="Another company"
-                className="w-40 bg-muted border border-border px-3 py-1.5 font-sans text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40"
+                className="flex-1 bg-muted border border-border px-2 py-1 font-sans text-[10px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40"
               />
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-foreground text-background font-mono text-[10px] uppercase tracking-widest"
+                className="px-2 py-1 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest whitespace-nowrap"
               >
                 Compare
-              </button>
-              <button
-                type="button"
-                onClick={() => setComparing(false)}
-                className="px-3 py-1.5 border border-border font-mono text-[10px] text-foreground/70 uppercase tracking-widest"
-              >
-                Cancel
               </button>
             </form>
           ) : (
             <button
               onClick={() => setComparing(true)}
-              className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
+              className="font-mono text-[9px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-2 py-1 hover:border-foreground/40 whitespace-nowrap"
             >
-              Compare another
+              Compare
             </button>
           )}
         </div>
+      </div>
 
-        {/* Share */}
+      {/* Share & New case */}
+      <div className="flex gap-2 justify-between pt-1">
         <button
           onClick={handleShare}
-          className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
+          className="font-mono text-[9px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-2 py-1 hover:border-foreground/40"
         >
           {shared ? 'Copied' : 'Share'}
         </button>
 
-        {/* New case */}
         <button
           onClick={onReset}
-          className="font-mono text-xs text-background bg-foreground hover:bg-foreground/80 transition-colors uppercase tracking-widest px-4 py-2 ml-auto"
+          className="font-mono text-[9px] text-background bg-foreground hover:bg-foreground/80 transition-colors uppercase tracking-widest px-2 py-1 whitespace-nowrap"
         >
           New case
         </button>
@@ -378,42 +375,51 @@ export function VerdictPage({ company, verdict, onReset, onCompare }: VerdictPag
         </button>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-0 verdict-slide">
-        {/* Score block */}
-        <ScoreBlock score={verdict.score} zone={verdict.zone} />
-
-        {/* Signal cards */}
-        <div className="mt-px">
-          <SignalCards agents={verdict.agents} />
+      {/* Main content: two-column layout */}
+      <div className="flex h-[calc(100vh-52px)]">
+        {/* Left column: Timeline - full height, larger */}
+        <div className="flex-1 border-r border-border overflow-hidden">
+          <VerticalTimeline events={verdict.timeline} />
         </div>
 
-        {/* Pattern match */}
-        <div className="mt-4">
-          <PatternMatch
-            closestDead={verdict.closestDead}
-            closestAlive={verdict.closestAlive}
-            fork={verdict.fork}
+        {/* Right column: All other content stacked */}
+        <div className="w-80 flex flex-col overflow-hidden bg-background">
+          {/* Score block */}
+          <div>
+            <ScoreBlock score={verdict.score} zone={verdict.zone} />
+          </div>
+
+          {/* Scrollable content area */}
+          <div className="flex-1 overflow-y-auto border-b border-border">
+            {/* Signal cards */}
+            <div className="border-b border-border">
+              <SignalCards agents={verdict.agents} />
+            </div>
+
+            {/* Pattern match */}
+            <div className="border-b border-border">
+              <PatternMatch
+                closestDead={verdict.closestDead}
+                closestAlive={verdict.closestAlive}
+                fork={verdict.fork}
+              />
+            </div>
+
+            {/* Counterfactual */}
+            <div>
+              <Counterfactual text={verdict.counterfactual} />
+            </div>
+          </div>
+
+          {/* Action bar - sticky at bottom */}
+          <ActionBar
+            company={company}
+            score={verdict.score}
+            zone={verdict.zone}
+            onReset={onReset}
+            onCompare={onCompare}
           />
         </div>
-
-        {/* Counterfactual */}
-        <div className="mt-4">
-          <Counterfactual text={verdict.counterfactual} />
-        </div>
-
-        {/* Timeline */}
-        <div className="mt-4">
-          <TimelineScrubber events={verdict.timeline} />
-        </div>
-
-        {/* Action bar */}
-        <ActionBar
-          company={company}
-          score={verdict.score}
-          zone={verdict.zone}
-          onReset={onReset}
-          onCompare={onCompare}
-        />
       </div>
     </div>
   )
