@@ -63,7 +63,7 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
 
   const datasets = AGENT_IDS.map((id) => ({
     label: AGENT_NAMES[id],
-    data: points.map((p) => (p as Record<string, number>)[id]),
+    data: points.map((p) => (p as unknown as Record<string, number>)[id]),
     borderColor: AGENT_COLORS[id],
     backgroundColor: 'transparent',
     borderWidth: 1.5,
@@ -174,7 +174,7 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
           </span>
           <div className="flex items-center gap-5">
             {AGENT_IDS.map((id) => {
-              const val = latestPoint ? (latestPoint as Record<string, number>)[id] : null
+              const val = latestPoint ? (latestPoint as unknown as Record<string, number>)[id] : null
               return (
                 <div key={id} className="flex items-center gap-1.5">
                   <span className="font-mono text-[10px] text-muted-foreground uppercase">{AGENT_NAMES[id]}</span>

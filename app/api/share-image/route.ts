@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     const filename = `verdict-${Date.now()}.png`
-    const blob = await put(filename, bytes, {
+    const blob = await put(filename, Buffer.from(bytes), {
       access: 'public',
       contentType: 'image/png',
       addRandomSuffix: true,
