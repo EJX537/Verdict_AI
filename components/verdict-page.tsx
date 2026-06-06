@@ -50,17 +50,14 @@ const DANGER_HEX = '#c0392b'
 // ─── Node layout ─────────────────────────────────────────────────────────────
 
 /**
- * For N events, compute each node's (x, y) on the canvas.
+ * For N events, compute each node's (x, y) on the canvas and card positioning.
  * x increases evenly left → right.
- * y is driven by each event's health score, log-scaled so drops at the low end
- * are amplified and improvements at the high end compress visually.
- *
- * Log mapping:
- *   normalised = log(score + 1) / log(101)   → [0, 1]
- *   y = topPad + (1 - normalised) * usableH  → high score = near top, low = near bottom
- *
- * side ('above' | 'below') is derived from whether this event's score is
- * above or below the midpoint score of the full timeline.
+ * y is driven by each event's health score (log-scaled).
+ * 
+ * Cards flow spatially:
+ * - Founded (first event) at middle-left
+ * - Doing well (high score) → moves toward top-right
+ * - Poorly (low score) → moves toward bottom-right
  */
 function computeNodes(
   events: VerdictData['timeline'],
@@ -74,10 +71,7 @@ function computeNodes(
   const padB = 32
   const usableW = cw - padL - padR
   const usableH = ch - padT - padB
-
-  // Median score across all events — used to decide card side
-  const sorted = [...events].map(e => e.score).sort((a, b) => a - b)
-  const median = sorted[Math.floor(n / 2)]
+  const centerY = padT + usableH / 2
 
   return events.map((ev, i) => {
     const x = padL + (i / (n - 1)) * usableW
@@ -86,8 +80,12 @@ function computeNodes(
     const logNorm = Math.log(ev.score + 1) / Math.log(101)
     const y = padT + (1 - logNorm) * usableH
 
-    // Card floats above if score is above median, below if at or under median
-    const side: 'above' | 'below' = ev.score > median ? 'above' : 'below'
+    // Card positioning: start at centerY, drift toward top for high scores, bottom for low
+    // side determines whether card renders above or below the curve line
+    // For first event (i=0), card should be at center height
+    // For subsequent events, card moves up (if score is good) or down (if score is poor)
+    const sideMultiplier = logNorm > 0.5 ? -1 : 1 // above (-1) for good scores, below (+1) for poor
+    const side: 'above' | 'below' = sideMultiplier === -1 ? 'above' : 'below'
 
     return { x, y, side }
   })
@@ -267,14 +265,15 @@ function EventCard({
 }) {
   const isCritical = !!ev.critical
   const isNow = ev.label === 'Now'
-  const tickLen = 24
+  const tickLen = 28
   const nodeR = isNow || isCritical ? 10 : 7
-  const cardW = 120
+  const cardW = 130
+  const cardH = 52
 
-  // Card sits above or below the node, centered on the node's x
+  // Card sits above or below the node, with extra spacing to avoid overlap
   const cardTop = node.side === 'above'
-    ? node.y - nodeR - tickLen - cardHeight
-    : node.y + nodeR + tickLen
+    ? node.y - nodeR - tickLen - cardH - 2
+    : node.y + nodeR + tickLen + 2
   const cardLeft = node.x - cardW / 2
 
   return (
@@ -293,18 +292,18 @@ function EventCard({
       }}
     >
       <div
-        className={`px-2 py-1.5 border-t-2 text-center ${
+        className={`px-3 py-2 border-t-2 text-center ${
           isCritical
-            ? 'border-t-[oklch(0.65_0.14_25)] bg-[oklch(0.65_0.14_25/0.08)]'
+            ? 'border-t-[oklch(0.72_0.17_25)] bg-[oklch(0.17_0_0)]'
             : isNow
-            ? `border-t-[${ZONE_COLORS[zone]}] bg-[oklch(0.18_0_0)]`
-            : 'border-t-border bg-[oklch(0.13_0_0)]'
+            ? `border-t-[${ZONE_COLORS[zone]}] bg-[oklch(0.17_0_0)]`
+            : 'border-t-[oklch(0.4_0.1_250)] bg-[oklch(0.16_0_0)]'
         }`}
       >
         <p
-          className={`font-mono text-[10px] font-medium leading-snug ${
+          className={`font-mono text-[11px] font-semibold leading-tight ${
             isCritical
-              ? 'text-[oklch(0.65_0.14_25)]'
+              ? 'text-[oklch(0.75_0.17_25)]'
               : isNow
               ? ZONE_TEXT[zone]
               : 'text-foreground'
@@ -312,7 +311,7 @@ function EventCard({
         >
           {ev.label}
         </p>
-        <p className="font-mono text-[9px] text-muted-foreground mt-0.5 tabular-nums">
+        <p className="font-mono text-[9px] text-foreground/60 mt-1 tabular-nums">
           M{ev.t}
         </p>
       </div>
