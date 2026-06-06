@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AGENTS } from '@/lib/mock-data'
 import type { VerdictData } from '@/lib/mock-data'
 
 interface ShareModalProps {
@@ -36,6 +37,10 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
     }
     if (urls[platform]) window.open(urls[platform], '_blank', 'width=600,height=400')
   }
+
+  // Most provocative agent = lowest score
+  const provocativeAgent = [...verdict.agents].sort((a, b) => a.score - b.score)[0]
+  const provocativeConfig = AGENTS.find(a => a.id === provocativeAgent.id)
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -94,6 +99,28 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
                   {verdict.closestAlive.match}% match
                 </div>
               </div>
+            </div>
+
+            {/* Most provocative agent */}
+            <div className="pt-4 border-t border-foreground/10 mt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div
+                  className="w-4 h-px"
+                  style={{ backgroundColor: provocativeConfig?.chartColor ?? '#fff' }}
+                />
+                <span
+                  className="font-mono text-[10px] uppercase tracking-widest"
+                  style={{ color: provocativeConfig?.chartColor ?? '#fff' }}
+                >
+                  {provocativeConfig?.name ?? provocativeAgent.id}
+                </span>
+                <span className="font-mono text-[10px] text-muted-foreground ml-auto">
+                  {provocativeAgent.score}/10
+                </span>
+              </div>
+              <p className="font-sans text-xs text-foreground/80 leading-relaxed">
+                {provocativeAgent.summary}
+              </p>
             </div>
           </div>
 
