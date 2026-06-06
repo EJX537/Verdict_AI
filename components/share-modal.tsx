@@ -1,4 +1,6 @@
-import { useState } from 'react'
+'use client'
+
+import { useRef, useState } from 'react'
 import { AGENTS } from '@/lib/mock-data'
 import type { VerdictData } from '@/lib/mock-data'
 
@@ -9,56 +11,173 @@ interface ShareModalProps {
   verdict: VerdictData
 }
 
+const ZONE_COLOR: Record<VerdictData['zone'], string> = {
+  Terminal: '#e05252',
+  Critical: '#e07c38',
+  Guarded: '#c9a227',
+  Stable: '#4a9e6b',
+  Thriving: '#4a86c8',
+}
+
+const W = 600
+const H = 340
+
+function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
+  company: string
+  verdict: VerdictData
+  provocativeConfig: typeof AGENTS[number] | undefined
+  provocativeAgent: VerdictData['agents'][number]
+}) {
+  const zoneCol = ZONE_COLOR[verdict.zone]
+  // Agent score bars
+  const barW = 80
+  const barH = 4
+  const agents = verdict.agents
+
+  // Wrap long text for SVG
+  const wrap = (text: string, maxChars: number): string[] => {
+    const words = text.split(' ')
+    const lines: string[] = []
+    let cur = ''
+    for (const w of words) {
+      if ((cur + ' ' + w).trim().length > maxChars) {
+        if (cur) lines.push(cur.trim())
+        cur = w
+      } else {
+        cur = (cur + ' ' + w).trim()
+      }
+    }
+    if (cur) lines.push(cur.trim())
+    return lines
+  }
+
+  const summaryLines = wrap(provocativeAgent.summary, 62)
+
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={W}
+      height={H}
+      viewBox={`0 0 ${W} ${H}`}
+      style={{ display: 'block', width: '100%', height: 'auto' }}
+    >
+      {/* Background */}
+      <rect width={W} height={H} fill="#0a0a0a" />
+
+      {/* Left accent strip */}
+      <rect x={0} y={0} width={3} height={H} fill={zoneCol} />
+
+      {/* Score */}
+      <text x={40} y={90} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={72} fontWeight={300} fill="#ffffff" letterSpacing={-2}>
+        {verdict.score}
+      </text>
+
+      {/* Zone label */}
+      <text x={42} y={118} fontFamily="ui-monospace, monospace" fontSize={11} fill={zoneCol} letterSpacing={4} textAnchor="start">
+        {verdict.zone.toUpperCase()}
+      </text>
+
+      {/* Company */}
+      <text x={42} y={140} fontFamily="ui-monospace, monospace" fontSize={11} fill="rgba(255,255,255,0.4)" letterSpacing={1}>
+        {company.toUpperCase()}
+      </text>
+
+      {/* Divider */}
+      <line x1={40} y1={158} x2={W - 40} y2={158} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
+
+      {/* Agent score bars */}
+      {agents.map((a, i) => {
+        const cfg = AGENTS.find(ag => ag.id === a.id)
+        const bx = 40 + i * (barW + 16)
+        const fillW = (a.score / 10) * barW
+        return (
+          <g key={a.id}>
+            <text x={bx} y={178} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.35)" letterSpacing={1}>
+              {(cfg?.name ?? a.id).toUpperCase()}
+            </text>
+            {/* Track */}
+            <rect x={bx} y={184} width={barW} height={barH} rx={1} fill="rgba(255,255,255,0.08)" />
+            {/* Fill */}
+            <rect x={bx} y={184} width={fillW} height={barH} rx={1} fill={cfg?.chartColor ?? '#fff'} />
+            {/* Score value */}
+            <text x={bx + barW + 4} y={188} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.5)">
+              {a.score.toFixed(1)}
+            </text>
+          </g>
+        )
+      })}
+
+      {/* Divider */}
+      <line x1={40} y1={202} x2={W - 40} y2={202} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
+
+      {/* Pattern match columns */}
+      <text x={40} y={220} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.35)" letterSpacing={2}>
+        CLOSEST DEAD
+      </text>
+      <text x={40} y={234} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={13} fontWeight={600} fill="#ffffff">
+        {verdict.closestDead.name}
+      </text>
+      <text x={40} y={248} fontFamily="ui-monospace, monospace" fontSize={9} fill="rgba(255,255,255,0.4)">
+        {verdict.closestDead.match}% match
+      </text>
+
+      <text x={220} y={220} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.35)" letterSpacing={2}>
+        CLOSEST LIVING
+      </text>
+      <text x={220} y={234} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={13} fontWeight={600} fill="#ffffff">
+        {verdict.closestAlive.name}
+      </text>
+      <text x={220} y={248} fontFamily="ui-monospace, monospace" fontSize={9} fill="rgba(255,255,255,0.4)">
+        {verdict.closestAlive.match}% match
+      </text>
+
+      {/* Divider */}
+      <line x1={40} y1={262} x2={W - 40} y2={262} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
+
+      {/* Provocative agent header */}
+      <rect x={40} y={272} width={16} height={1} fill={provocativeConfig?.chartColor ?? '#fff'} />
+      <text x={62} y={273} fontFamily="ui-monospace, monospace" fontSize={8} fill={provocativeConfig?.chartColor ?? '#fff'} letterSpacing={2} dominantBaseline="middle">
+        {(provocativeConfig?.name ?? provocativeAgent.id).toUpperCase()}
+      </text>
+      <text x={W - 40} y={273} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.4)" textAnchor="end" dominantBaseline="middle">
+        {provocativeAgent.score}/10
+      </text>
+
+      {/* Agent summary lines */}
+      {summaryLines.slice(0, 2).map((line, i) => (
+        <text key={i} x={40} y={290 + i * 16} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={11} fill="rgba(255,255,255,0.7)">
+          {line}
+        </text>
+      ))}
+
+      {/* Watermark */}
+      <text x={W - 40} y={H - 16} fontFamily="ui-monospace, monospace" fontSize={9} fill="rgba(255,255,255,0.2)" textAnchor="end" letterSpacing={2}>
+        THE VERDICT
+      </text>
+    </svg>
+  )
+}
+
 export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProps) {
   const [copied, setCopied] = useState(false)
-  const [copiedVisual, setCopiedVisual] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const svgRef = useRef<SVGSVGElement | null>(null)
 
   if (!isOpen) return null
 
   const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/verdict?id=${encodeURIComponent(company)}`
-  const zoneColor: Record<VerdictData['zone'], string> = {
-    Terminal: '#c0392b',
-    Critical: '#e67e22',
-    Guarded: '#d4ac0d',
-    Stable: '#27ae60',
-    Thriving: '#2980b9',
-  }
 
-  // Generate visual grid like Wordle (emoji-based)
-  const zoneEmoji: Record<VerdictData['zone'], string> = {
-    Terminal: '🔴',
-    Critical: '🟠',
-    Guarded: '🟡',
-    Stable: '🟢',
-    Thriving: '🔵',
-  }
-
-  // Create a 5x2 grid showing the score and agents
-  const generateVisualGrid = () => {
-    const scoreStr = verdict.score.toString()
-    const zoneEmoji_ = zoneEmoji[verdict.zone]
-    const agentScores = verdict.agents.map(a => Math.round(a.score))
-
-    // Row 1: Score and zone
-    let grid = `${scoreStr}\n`
-    grid += `${zoneEmoji_} ${verdict.zone}\n\n`
-
-    // Row 2: Agent scores as colored squares
-    grid += agentScores.map((score) => {
-      if (score >= 8) return '🟢'
-      if (score >= 6) return '🟡'
-      if (score >= 4) return '🟠'
-      return '🔴'
-    }).join(' ')
-    grid += '\n\n'
-
-    // Company name
-    grid += `${company}\nThe Verdict`
-
-    return grid
-  }
-
-  const visualGrid = generateVisualGrid()
+  // Most provocative agent = furthest from median
+  const scores = verdict.agents.map(a => a.score)
+  const sortedScores = [...scores].sort((a, b) => a - b)
+  const mid = Math.floor(sortedScores.length / 2)
+  const median = sortedScores.length % 2 !== 0
+    ? sortedScores[mid]
+    : (sortedScores[mid - 1] + sortedScores[mid]) / 2
+  const provocativeAgent = [...verdict.agents].sort(
+    (a, b) => Math.abs(b.score - median) - Math.abs(a.score - median)
+  )[0]
+  const provocativeConfig = AGENTS.find(a => a.id === provocativeAgent.id)
 
   const handleCopyUrl = () => {
     navigator.clipboard?.writeText(shareUrl)
@@ -66,115 +185,97 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleCopyVisual = () => {
-    navigator.clipboard?.writeText(visualGrid)
-    setCopiedVisual(true)
-    setTimeout(() => setCopiedVisual(false), 2000)
+  // Render SVG to canvas, then download PNG
+  const handleDownload = async () => {
+    const svgEl = svgRef.current
+    if (!svgEl) return
+    setDownloading(true)
+    try {
+      const svgData = new XMLSerializer().serializeToString(svgEl)
+      const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = W * 2
+        canvas.height = H * 2
+        const ctx = canvas.getContext('2d')!
+        ctx.scale(2, 2)
+        ctx.drawImage(img, 0, 0)
+        URL.revokeObjectURL(url)
+        canvas.toBlob((pngBlob) => {
+          if (!pngBlob) return
+          const a = document.createElement('a')
+          a.href = URL.createObjectURL(pngBlob)
+          a.download = `verdict-${company.toLowerCase().replace(/\s+/g, '-')}.png`
+          a.click()
+          setDownloading(false)
+        }, 'image/png')
+      }
+      img.src = url
+    } catch {
+      setDownloading(false)
+    }
   }
 
   const handleShare = (platform: 'twitter' | 'linkedin') => {
-    const text = `${visualGrid}\n\n${shareUrl}`
+    const text = `I ran ${company} through The Verdict — scored ${verdict.score}/100 (${verdict.zone}). Closest dead: ${verdict.closestDead.name}. Closest living: ${verdict.closestAlive.name}.`
     const urls: Record<string, string> = {
-      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
-      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&summary=${encodeURIComponent(visualGrid)}`,
+      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
     }
     if (urls[platform]) window.open(urls[platform], '_blank', 'width=600,height=400')
   }
 
-  // Most provocative agent = furthest absolute distance from the median score
-  const scores = verdict.agents.map(a => a.score)
-  const sorted = [...scores].sort((a, b) => a - b)
-  const mid = Math.floor(sorted.length / 2)
-  const median = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
-  const provocativeAgent = [...verdict.agents].sort(
-    (a, b) => Math.abs(b.score - median) - Math.abs(a.score - median)
-  )[0]
-  const provocativeConfig = AGENTS.find(a => a.id === provocativeAgent.id)
-
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-background border border-border rounded w-full max-w-lg">
+      <div className="bg-background border border-border w-full max-w-xl">
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="font-mono text-sm uppercase tracking-widest text-foreground">Share verdict</h2>
+          <h2 className="font-mono text-xs uppercase tracking-widest text-foreground">Share verdict</h2>
           <button
             onClick={onClose}
-            className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors text-lg"
+            className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
           >
             ✕
           </button>
         </div>
 
-        {/* Visual artifact preview */}
-        <div className="p-6">
-          <div className="bg-black rounded border border-foreground/10 p-6 mb-6">
-            {/* Score display */}
-            <div className="text-center mb-6">
-              <div className="font-sans text-5xl font-light text-foreground mb-2">
-                {verdict.score}
-              </div>
-              <div
-                className="font-mono text-xs uppercase tracking-[0.3em] mb-2"
-                style={{ color: zoneColor[verdict.zone] }}
-              >
-                {verdict.zone}
-              </div>
-              <div className="font-mono text-[10px] text-muted-foreground">
-                {company}
-              </div>
-            </div>
+        <div className="p-6 space-y-5">
 
-            {/* Pattern match */}
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-foreground/10">
-              <div>
-                <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
-                  Closest dead
-                </div>
-                <div className="font-sans text-sm text-foreground font-medium">
-                  {verdict.closestDead.name}
-                </div>
-                <div className="font-mono text-[9px] text-muted-foreground mt-1">
-                  {verdict.closestDead.match}% match
-                </div>
-              </div>
-              <div>
-                <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
-                  Closest living
-                </div>
-                <div className="font-sans text-sm text-foreground font-medium">
-                  {verdict.closestAlive.name}
-                </div>
-                <div className="font-mono text-[9px] text-muted-foreground mt-1">
-                  {verdict.closestAlive.match}% match
-                </div>
-              </div>
-            </div>
-
-            {/* Most provocative agent */}
-            <div className="pt-4 border-t border-foreground/10 mt-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div
-                  className="w-4 h-px"
-                  style={{ backgroundColor: provocativeConfig?.chartColor ?? '#fff' }}
-                />
-                <span
-                  className="font-mono text-[10px] uppercase tracking-widest"
-                  style={{ color: provocativeConfig?.chartColor ?? '#fff' }}
-                >
-                  {provocativeConfig?.name ?? provocativeAgent.id}
-                </span>
-                <span className="font-mono text-[10px] text-muted-foreground ml-auto">
-                  {provocativeAgent.score}/10
-                </span>
-              </div>
-              <p className="font-sans text-xs text-foreground/80 leading-relaxed">
-                {provocativeAgent.summary}
-              </p>
-            </div>
+          {/* SVG visual artifact */}
+          <div className="border border-foreground/10 overflow-hidden">
+            <VerdictSVG
+              company={company}
+              verdict={verdict}
+              provocativeConfig={provocativeConfig}
+              provocativeAgent={provocativeAgent}
+            />
           </div>
 
-          {/* Share URL */}
-          <div className="mb-6">
+          {/* Download PNG */}
+          <div className="hidden">
+            {/* Hidden SVG used for PNG export at 2x */}
+            <svg
+              ref={svgRef}
+              xmlns="http://www.w3.org/2000/svg"
+              width={W}
+              height={H}
+              viewBox={`0 0 ${W} ${H}`}
+            >
+              <VerdictSVG
+                company={company}
+                verdict={verdict}
+                provocativeConfig={provocativeConfig}
+                provocativeAgent={provocativeAgent}
+              />
+            </svg>
+          </div>
+
+          {/* Verdict URL */}
+          <div>
             <label className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
               Verdict URL
             </label>
@@ -183,48 +284,40 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
                 type="text"
                 readOnly
                 value={shareUrl}
-                className="flex-1 bg-muted border border-border px-3 py-2 font-mono text-xs text-foreground rounded"
+                className="flex-1 bg-muted border border-border px-3 py-2 font-mono text-xs text-foreground"
               />
               <button
                 onClick={handleCopyUrl}
-                className="cursor-pointer px-4 py-2 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest hover:bg-foreground/85 transition-colors rounded whitespace-nowrap"
+                className="cursor-pointer px-4 py-2 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest hover:bg-foreground/85 transition-colors whitespace-nowrap"
               >
                 {copied ? 'Copied' : 'Copy'}
               </button>
             </div>
           </div>
 
-          {/* Visual grid preview */}
-          <div className="mb-6">
-            <label className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
-              Share visual
-            </label>
-            <div className="bg-muted border border-border rounded p-4 mb-3 font-mono text-sm whitespace-pre-wrap text-foreground text-center">
-              {visualGrid}
-            </div>
-            <button
-              onClick={handleCopyVisual}
-              className="w-full cursor-pointer px-4 py-2 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest hover:bg-foreground/85 transition-colors rounded whitespace-nowrap"
-            >
-              {copiedVisual ? 'Copied visual' : 'Copy visual'}
-            </button>
-          </div>
-
-          {/* Social share buttons */}
+          {/* Actions */}
           <div className="flex gap-3">
             <button
-              onClick={() => handleShare('twitter')}
-              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors rounded"
+              onClick={handleDownload}
+              disabled={downloading}
+              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50"
             >
-              Open Twitter
+              {downloading ? 'Exporting...' : 'Download PNG'}
+            </button>
+            <button
+              onClick={() => handleShare('twitter')}
+              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors"
+            >
+              Twitter
             </button>
             <button
               onClick={() => handleShare('linkedin')}
-              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors rounded"
+              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors"
             >
-              Open LinkedIn
+              LinkedIn
             </button>
           </div>
+
         </div>
       </div>
     </div>
