@@ -17,5 +17,5 @@ export function makeRunner(client: ApifyClient): ActorRunner {
 }
 
 // Default runner using APIFY_TOKEN from the environment.
-export const apifyRunner: ActorRunner = (actorId, input) =>
-  makeRunner(new ApifyClient({ token: process.env.APIFY_TOKEN }))(actorId, input)
+const defaultClient = new ApifyClient({ token: process.env.APIFY_TOKEN })
+export const apifyRunner: ActorRunner = makeRunner(defaultClient)
