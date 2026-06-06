@@ -162,7 +162,7 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
 
 export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProps) {
   const [copied, setCopied] = useState(false)
-  const [downloading, setDownloading] = useState(false)
+  const [sharing, setSharing] = useState<'twitter' | 'linkedin' | null>(null)
   const svgRef = useRef<SVGSVGElement | null>(null)
 
   if (!isOpen) return null
@@ -187,15 +187,14 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // Render SVG to canvas, then download PNG
-  const handleDownload = async () => {
-    const svgEl = svgRef.current
-    if (!svgEl) return
-    setDownloading(true)
-    try {
+  // Convert the SVG element to a PNG Blob via canvas
+  const svgToPngBlob = (): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const svgEl = svgRef.current
+      if (!svgEl) return resolve(null)
       const svgData = new XMLSerializer().serializeToString(svgEl)
-      const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+      const url = URL.createObjectURL(svgBlob)
       const img = new Image()
       img.crossOrigin = 'anonymous'
       img.onload = () => {
@@ -206,28 +205,54 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
         ctx.scale(2, 2)
         ctx.drawImage(img, 0, 0)
         URL.revokeObjectURL(url)
-        canvas.toBlob((pngBlob) => {
-          if (!pngBlob) return
-          const a = document.createElement('a')
-          a.href = URL.createObjectURL(pngBlob)
-          a.download = `verdict-${company.toLowerCase().replace(/\s+/g, '-')}.png`
-          a.click()
-          setDownloading(false)
-        }, 'image/png')
+        canvas.toBlob(resolve, 'image/png')
       }
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
       img.src = url
-    } catch {
-      setDownloading(false)
-    }
+    })
   }
 
-  const handleShare = (platform: 'twitter' | 'linkedin') => {
-    const text = `I ran ${company} through The Verdict — scored ${verdict.score}/100 (${verdict.zone}). Closest dead: ${verdict.closestDead.name}. Closest living: ${verdict.closestAlive.name}.`
-    const urls: Record<string, string> = {
-      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`,
-      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+  const handleDownload = async () => {
+    const blob = await svgToPngBlob()
+    if (!blob) return
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `verdict-${company.toLowerCase().replace(/\s+/g, '-')}.png`
+    a.click()
+  }
+
+  // Share with image via Web Share API (mobile) or download + open intent (desktop)
+  const handleShare = async (platform: 'twitter' | 'linkedin') => {
+    setSharing(platform)
+    try {
+      const blob = await svgToPngBlob()
+      const text = `I ran ${company} through The Verdict — scored ${verdict.score}/100 (${verdict.zone}). Closest dead: ${verdict.closestDead.name}. Closest living: ${verdict.closestAlive.name}.`
+
+      // Try Web Share API first — attaches the PNG natively on mobile
+      if (blob && typeof navigator.share === 'function' && navigator.canShare?.({ files: [new File([blob], 'verdict.png', { type: 'image/png' })] })) {
+        await navigator.share({
+          title: `The Verdict — ${company}`,
+          text,
+          url: shareUrl,
+          files: [new File([blob], 'verdict.png', { type: 'image/png' })],
+        })
+      } else {
+        // Desktop fallback: download PNG so user can attach it, then open intent
+        if (blob) {
+          const a = document.createElement('a')
+          a.href = URL.createObjectURL(blob)
+          a.download = `verdict-${company.toLowerCase().replace(/\s+/g, '-')}.png`
+          a.click()
+        }
+        const intentUrls: Record<string, string> = {
+          twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`,
+          linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+        }
+        if (intentUrls[platform]) window.open(intentUrls[platform], '_blank', 'width=600,height=400')
+      }
+    } finally {
+      setSharing(null)
     }
-    if (urls[platform]) window.open(urls[platform], '_blank', 'width=600,height=400')
   }
 
   return (
@@ -301,22 +326,23 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
           <div className="flex gap-3">
             <button
               onClick={handleDownload}
-              disabled={downloading}
-              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50"
+              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors"
             >
-              {downloading ? 'Exporting...' : 'Download PNG'}
+              Download PNG
             </button>
             <button
               onClick={() => handleShare('twitter')}
-              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors"
+              disabled={sharing === 'twitter'}
+              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50"
             >
-              Twitter
+              {sharing === 'twitter' ? 'Sharing...' : 'Twitter'}
             </button>
             <button
               onClick={() => handleShare('linkedin')}
-              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors"
+              disabled={sharing === 'linkedin'}
+              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50"
             >
-              LinkedIn
+              {sharing === 'linkedin' ? 'Sharing...' : 'LinkedIn'}
             </button>
           </div>
 
