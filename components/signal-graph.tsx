@@ -57,6 +57,9 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [lockedIndex, setLockedIndex] = useState<number | null>(null)
   const isLocked = lockedIndex !== null
+  // Ref so the onHover closure always sees the latest isLocked value
+  const isLockedRef = useRef(isLocked)
+  useEffect(() => { isLockedRef.current = isLocked }, [isLocked])
 
   // The index we're actually displaying — locked takes priority over hover, else latest
   const activeIndex = lockedIndex ?? hoverIndex ?? (points.length > 0 ? points.length - 1 : null)
@@ -91,6 +94,17 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
     maintainAspectRatio: false,
     animation: false,
     interaction: { mode: 'index', intersect: false },
+    onHover: (_event, _elements, chart) => {
+      if (isLockedRef.current) return
+      // Chart.js fires onHover with the active elements — pull the dataIndex
+      // from the first active element, which gives us the x position
+      const active = chart.getActiveElements()
+      if (active.length > 0) {
+        setHoverIndex(active[0].index)
+      } else {
+        setHoverIndex(null)
+      }
+    },
     scales: {
       x: {
         display: true,
@@ -126,19 +140,6 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
       tooltip: { enabled: false }, // disabled — we drive the bottom bar ourselves
     },
   }
-
-  // --- Custom hover tracking via canvas mousemove ---
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (isLocked) return
-    const chart = chartRef.current
-    if (!chart || points.length === 0) return
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const xScale = chart.scales.x
-    if (!xScale) return
-    const idx = Math.round(xScale.getValueForPixel(x) ?? 0)
-    setHoverIndex(Math.max(0, Math.min(idx, points.length - 1)))
-  }, [isLocked, points.length])
 
   const handleMouseLeave = useCallback(() => {
     if (!isLocked) setHoverIndex(null)
@@ -203,7 +204,6 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
       {/* Chart area */}
       <div
         className="flex-1 relative min-h-0 m-3 mb-0 border border-foreground/5 cursor-crosshair"
-        onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
       >
