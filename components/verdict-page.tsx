@@ -1,14 +1,13 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { line, curveCatmullRom } from 'd3-shape'
-import { scaleLinear } from 'd3-scale'
 import { AGENTS, getScoreTint } from '@/lib/mock-data'
 import type { VerdictData } from '@/lib/mock-data'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function useCountUp(target: number, duration = 1200) {
+function useCountUp(target: number, duration = 1400) {
   const [current, setCurrent] = useState(0)
   useEffect(() => {
     let start: number | null = null
@@ -25,24 +24,286 @@ function useCountUp(target: number, duration = 1200) {
 }
 
 const ZONE_COLORS: Record<VerdictData['zone'], string> = {
-  Terminal: 'oklch(0.65 0.14 25)',
-  Critical: 'oklch(0.72 0.14 30)',
-  Guarded: 'oklch(0.78 0.12 55)',
-  Stable: 'oklch(0.82 0.09 150)',
-  Thriving: 'oklch(0.86 0.06 200)',
+  Terminal:  'oklch(0.65 0.14 25)',
+  Critical:  'oklch(0.72 0.14 30)',
+  Guarded:   'oklch(0.78 0.12 55)',
+  Stable:    'oklch(0.82 0.09 150)',
+  Thriving:  'oklch(0.86 0.06 200)',
 }
-
+const ZONE_HEX: Record<VerdictData['zone'], string> = {
+  Terminal:  '#c0392b',
+  Critical:  '#e67e22',
+  Guarded:   '#d4ac0d',
+  Stable:    '#27ae60',
+  Thriving:  '#2980b9',
+}
 const ZONE_TEXT: Record<VerdictData['zone'], string> = {
-  Terminal: 'text-[oklch(0.65_0.14_25)]',
-  Critical: 'text-[oklch(0.72_0.14_30)]',
-  Guarded: 'text-[oklch(0.78_0.12_55)]',
-  Stable: 'text-[oklch(0.82_0.09_150)]',
-  Thriving: 'text-[oklch(0.86_0.06_200)]',
+  Terminal:  'text-[oklch(0.65_0.14_25)]',
+  Critical:  'text-[oklch(0.72_0.14_30)]',
+  Guarded:   'text-[oklch(0.78_0.12_55)]',
+  Stable:    'text-[oklch(0.82_0.09_150)]',
+  Thriving:  'text-[oklch(0.86_0.06_200)]',
+}
+const DANGER_HEX = '#c0392b'
+
+// ─── Node layout ─────────────────────────────────────────────────────────────
+
+/** 
+ * For N events, compute each node's (x, y) on the canvas.
+ * The path snakes: odd-indexed nodes lean right of center, even lean left.
+ * This mirrors the reference image's wave — but oriented vertically.
+ */
+function computeNodes(
+  events: VerdictData['timeline'],
+  cw: number,
+  ch: number,
+): { x: number; y: number; side: 'left' | 'right' }[] {
+  const n = events.length
+  const padT = 80
+  const padB = 80
+  const usableH = ch - padT - padB
+  const cx = cw / 2
+  // Swing amplitude: how far left/right from center the node sits
+  const amp = Math.min(cx * 0.45, 140)
+
+  return events.map((_, i) => {
+    const t = i / (n - 1)
+    const y = padT + t * usableH
+    // Sinusoidal x displacement: nodes alternate sides with smooth transition
+    const side: 'left' | 'right' = i % 2 === 0 ? 'left' : 'right'
+    const xOffset = Math.sin((i / (n - 1)) * Math.PI * (n - 1)) * amp
+    // Alternate sign per node
+    const signedOffset = i % 2 === 0 ? -amp * 0.6 : amp * 0.6
+    return { x: cx + signedOffset, y, side }
+  })
 }
 
-const DANGER = 'oklch(0.65 0.14 25)'
+// ─── Canvas Timeline ──────────────────────────────────────────────────────────
 
-// ─── Flowing Timeline (D3 + Canvas) ──────────────────────────────────────────
+interface TimelineCanvasProps {
+  events: VerdictData['timeline']
+  zone: VerdictData['zone']
+  visible: number
+  nodes: { x: number; y: number; side: 'left' | 'right' }[]
+  dims: { w: number; h: number }
+}
+
+function TimelineCanvas({ events, zone, visible, nodes, dims }: TimelineCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || nodes.length === 0 || dims.w === 0) return
+    const dpr = window.devicePixelRatio || 1
+    canvas.width  = dims.w * dpr
+    canvas.height = dims.h * dpr
+    canvas.style.width  = `${dims.w}px`
+    canvas.style.height = `${dims.h}px`
+    const ctx = canvas.getContext('2d')!
+    ctx.scale(dpr, dpr)
+    ctx.clearRect(0, 0, dims.w, dims.h)
+
+    const pts = nodes.map(n => ({ x: n.x, y: n.y }))
+
+    // D3 line generator with CatmullRom curve (smooth S-bends)
+    const pathGen = line<{ x: number; y: number }>()
+      .x(d => d.x)
+      .y(d => d.y)
+      .curve(curveCatmullRom.alpha(0.5))
+
+    // Build a Path2D from the D3 string
+    const buildPath = (points: typeof pts) => new Path2D(pathGen(points) ?? '')
+
+    // 1. Ghost track (full path, dim dashed)
+    const ghostPath = buildPath(pts)
+    ctx.save()
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'
+    ctx.lineWidth = 2
+    ctx.setLineDash([4, 8])
+    ctx.stroke(ghostPath)
+    ctx.restore()
+
+    // 2. Lit track up to `visible` — gradient from red → zone color
+    if (visible > 1) {
+      const litPts = pts.slice(0, Math.min(visible, pts.length))
+      const litPath = buildPath(litPts)
+
+      // Linear gradient from top of lit path to bottom
+      const y0 = litPts[0].y
+      const y1 = litPts[litPts.length - 1].y
+      const grad = ctx.createLinearGradient(0, y0, 0, y1)
+      grad.addColorStop(0,   DANGER_HEX)
+      grad.addColorStop(0.4, '#e67e22')
+      grad.addColorStop(0.7, '#d4ac0d')
+      grad.addColorStop(1,   ZONE_HEX[zone])
+
+      ctx.save()
+      ctx.strokeStyle = grad
+      ctx.lineWidth = 3
+      ctx.setLineDash([])
+      ctx.shadowColor = ZONE_HEX[zone]
+      ctx.shadowBlur = 6
+      ctx.stroke(litPath)
+      ctx.restore()
+    }
+
+    // 3. Nodes
+    nodes.forEach((node, i) => {
+      const ev = events[i]
+      const isLit = i < visible
+      const isCritical = !!ev.critical
+      const isNow = ev.label === 'Now'
+      const r = isNow || isCritical ? 10 : 7
+
+      if (!isLit) {
+        // Ghost dot
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(node.x, node.y, 4, 0, Math.PI * 2)
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)'
+        ctx.lineWidth = 1
+        ctx.stroke()
+        ctx.restore()
+        return
+      }
+
+      // Glow ring for critical / now
+      if (isCritical || isNow) {
+        const glowColor = isCritical ? DANGER_HEX : ZONE_HEX[zone]
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(node.x, node.y, r + 6, 0, Math.PI * 2)
+        ctx.fillStyle = glowColor + '22'
+        ctx.fill()
+        ctx.restore()
+      }
+
+      // Circle fill
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, r, 0, Math.PI * 2)
+      if (isCritical) {
+        ctx.fillStyle = DANGER_HEX + '33'
+        ctx.strokeStyle = DANGER_HEX
+      } else if (isNow) {
+        ctx.fillStyle = ZONE_HEX[zone] + '33'
+        ctx.strokeStyle = ZONE_HEX[zone]
+      } else {
+        // Gradient lit color based on position
+        const t = i / (events.length - 1)
+        const r2 = Math.round(192 - t * 65)
+        const g2 = Math.round(57  + t * 80)
+        const b2 = Math.round(43  + t * 100)
+        ctx.fillStyle = `rgba(${r2},${g2},${b2},0.25)`
+        ctx.strokeStyle = `rgba(${r2},${g2},${b2},0.9)`
+      }
+      ctx.lineWidth = 1.5
+      ctx.fill()
+      ctx.stroke()
+      ctx.restore()
+
+      // Inner dot
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, isCritical || isNow ? 3.5 : 2.5, 0, Math.PI * 2)
+      ctx.fillStyle = isCritical ? DANGER_HEX : isNow ? ZONE_HEX[zone] : 'rgba(255,255,255,0.7)'
+      ctx.fill()
+      ctx.restore()
+
+      // Connector tick to card
+      const tickLen = 28
+      const tickX1 = node.side === 'left' ? node.x - r : node.x + r
+      const tickX2 = node.side === 'left' ? tickX1 - tickLen : tickX1 + tickLen
+      ctx.save()
+      ctx.beginPath()
+      ctx.moveTo(tickX1, node.y)
+      ctx.lineTo(tickX2, node.y)
+      ctx.strokeStyle = isCritical ? DANGER_HEX + '80' : 'rgba(255,255,255,0.2)'
+      ctx.lineWidth = 1
+      ctx.stroke()
+      ctx.restore()
+    })
+  }, [dims, visible, events, zone, nodes])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 pointer-events-none"
+    />
+  )
+}
+
+// ─── Event Card ───────────────────────────────────────────────────────────────
+
+function EventCard({
+  ev,
+  node,
+  index,
+  isVisible,
+  zone,
+  cardWidth,
+}: {
+  ev: VerdictData['timeline'][number]
+  node: { x: number; y: number; side: 'left' | 'right' }
+  index: number
+  isVisible: boolean
+  zone: VerdictData['zone']
+  cardWidth: number
+}) {
+  const isCritical = !!ev.critical
+  const isNow = ev.label === 'Now'
+  const tickLen = 28
+  const nodeR = isNow || isCritical ? 10 : 7
+
+  // Card sits on opposite side of node's lean, anchored to tick end
+  const cardLeft = node.side === 'left'
+    ? node.x - nodeR - tickLen - cardWidth
+    : node.x + nodeR + tickLen
+
+  return (
+    <div
+      className="absolute pointer-events-none"
+      style={{
+        left: cardLeft,
+        top: node.y - 22,
+        width: cardWidth,
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible
+          ? 'translateX(0) translateY(0)'
+          : `translateX(${node.side === 'left' ? '16px' : '-16px'})`,
+        transition: 'opacity 0.35s ease, transform 0.35s ease',
+        transitionDelay: `${index * 60}ms`,
+      }}
+    >
+      <div
+        className={`px-3 py-2 border-l-2 ${
+          isCritical
+            ? 'border-l-[oklch(0.65_0.14_25)] bg-[oklch(0.65_0.14_25/0.08)]'
+            : isNow
+            ? `border-l-[${ZONE_COLORS[zone]}] bg-[oklch(0.18_0_0)]`
+            : 'border-l-border bg-[oklch(0.13_0_0)]'
+        }`}
+      >
+        <p
+          className={`font-mono text-[10px] font-medium leading-snug ${
+            isCritical
+              ? 'text-[oklch(0.65_0.14_25)]'
+              : isNow
+              ? ZONE_TEXT[zone]
+              : 'text-foreground'
+          }`}
+        >
+          {ev.label}
+        </p>
+        <p className="font-mono text-[9px] text-muted-foreground mt-0.5 tabular-nums">
+          Month {ev.t}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Flowing Timeline ─────────────────────────────────────────────────────────
 
 interface FlowingTimelineProps {
   events: VerdictData['timeline']
@@ -51,27 +312,12 @@ interface FlowingTimelineProps {
 }
 
 function FlowingTimeline({ events, zone, score }: FlowingTimelineProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(0) // how many events are revealed
+  const [visible, setVisible] = useState(0)
   const [dims, setDims] = useState({ w: 0, h: 0 })
   const animRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Stagger events in on mount
-  useEffect(() => {
-    let i = 0
-    const tick = () => {
-      setVisible((v) => v + 1)
-      i++
-      if (i < events.length) {
-        animRef.current = setTimeout(tick, 160)
-      }
-    }
-    animRef.current = setTimeout(tick, 300)
-    return () => { if (animRef.current) clearTimeout(animRef.current) }
-  }, [events.length])
-
-  // Observe container size
+  // Measure container
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -79,255 +325,115 @@ function FlowingTimeline({ events, zone, score }: FlowingTimelineProps) {
       setDims({ w: el.offsetWidth, h: el.offsetHeight })
     })
     ro.observe(el)
+    setDims({ w: el.offsetWidth, h: el.offsetHeight })
     return () => ro.disconnect()
   }, [])
 
-  // Compute node positions using D3 scales
-  const padding = { top: 60, bottom: 60 }
-  const nodePositions: { x: number; y: number; side: 'left' | 'right' }[] = []
-
-  if (dims.w > 0 && dims.h > 0) {
-    const yScale = scaleLinear()
-      .domain([0, events.length - 1])
-      .range([padding.top, dims.h - padding.bottom])
-
-    const cx = dims.w / 2
-    const swing = Math.min(80, dims.w * 0.18) // how far left/right the path swings
-
-    events.forEach((_, i) => {
-      const side = i % 2 === 0 ? 'left' : 'right'
-      const xOffset = side === 'left' ? -swing : swing
-      nodePositions.push({
-        x: cx + xOffset,
-        y: yScale(i),
-        side,
-      })
-    })
-  }
-
-  // Draw path + nodes on canvas
+  // Stagger reveal
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas || nodePositions.length === 0) return
-    const dpr = window.devicePixelRatio || 1
-    canvas.width = dims.w * dpr
-    canvas.height = dims.h * dpr
-    canvas.style.width = `${dims.w}px`
-    canvas.style.height = `${dims.h}px`
-    const ctx = canvas.getContext('2d')!
-    ctx.scale(dpr, dpr)
-    ctx.clearRect(0, 0, dims.w, dims.h)
-
-    // Build D3 line generator for the path
-    const pathGen = line<{ x: number; y: number }>()
-      .x((d) => d.x)
-      .y((d) => d.y)
-      .curve(curveCatmullRom.alpha(0.5))
-
-    const points = nodePositions.map((n) => ({ x: n.x, y: n.y }))
-
-    // Draw full ghost track
-    const ghostPath = new Path2D(pathGen(points) ?? '')
-    ctx.save()
-    ctx.strokeStyle = 'oklch(0.28 0 0)'
-    ctx.lineWidth = 1.5
-    ctx.setLineDash([3, 6])
-    ctx.stroke(ghostPath)
-    ctx.restore()
-
-    // Draw lit path (only up to `visible` nodes)
-    if (visible > 1) {
-      const litPoints = points.slice(0, Math.min(visible, points.length))
-      const litPath = new Path2D(pathGen(litPoints) ?? '')
-      ctx.save()
-      ctx.strokeStyle = ZONE_COLORS[zone]
-      ctx.lineWidth = 2
-      ctx.globalAlpha = 0.7
-      ctx.setLineDash([])
-      ctx.stroke(litPath)
-      ctx.restore()
+    setVisible(0)
+    let i = 0
+    const tick = () => {
+      setVisible(v => v + 1)
+      i++
+      if (i < events.length) animRef.current = setTimeout(tick, 180)
     }
+    animRef.current = setTimeout(tick, 400)
+    return () => { if (animRef.current) clearTimeout(animRef.current) }
+  }, [events])
 
-    // Draw nodes
-    nodePositions.forEach((node, i) => {
-      const isVisible = i < visible
-      const ev = events[i]
-      const isCritical = ev.critical
-      const isNow = ev.label === 'Now'
+  const nodes = dims.w > 0 && dims.h > 0
+    ? computeNodes(events, dims.w, dims.h)
+    : []
 
-      if (!isVisible) {
-        // Faint ghost dot
-        ctx.save()
-        ctx.beginPath()
-        ctx.arc(node.x, node.y, 3, 0, Math.PI * 2)
-        ctx.fillStyle = 'oklch(0.25 0 0)'
-        ctx.fill()
-        ctx.restore()
-        return
-      }
-
-      if (isCritical) {
-        // Glow ring
-        ctx.save()
-        ctx.beginPath()
-        ctx.arc(node.x, node.y, 10, 0, Math.PI * 2)
-        ctx.fillStyle = `oklch(0.65 0.14 25 / 0.15)`
-        ctx.fill()
-        ctx.beginPath()
-        ctx.arc(node.x, node.y, 6, 0, Math.PI * 2)
-        ctx.fillStyle = `oklch(0.65 0.14 25 / 0.3)`
-        ctx.fill()
-        ctx.restore()
-        ctx.save()
-        ctx.beginPath()
-        ctx.arc(node.x, node.y, 4, 0, Math.PI * 2)
-        ctx.fillStyle = DANGER
-        ctx.fill()
-        ctx.restore()
-      } else if (isNow) {
-        // Zone-colored "now" dot
-        ctx.save()
-        ctx.beginPath()
-        ctx.arc(node.x, node.y, 8, 0, Math.PI * 2)
-        ctx.fillStyle = `${ZONE_COLORS[zone]}33`
-        ctx.fill()
-        ctx.beginPath()
-        ctx.arc(node.x, node.y, 4, 0, Math.PI * 2)
-        ctx.fillStyle = ZONE_COLORS[zone]
-        ctx.fill()
-        ctx.restore()
-      } else {
-        // Normal dot
-        ctx.save()
-        ctx.beginPath()
-        ctx.arc(node.x, node.y, 3.5, 0, Math.PI * 2)
-        ctx.strokeStyle = 'oklch(0.55 0 0)'
-        ctx.lineWidth = 1.5
-        ctx.fillStyle = 'oklch(0.09 0 0)'
-        ctx.fill()
-        ctx.stroke()
-        ctx.restore()
-      }
-    })
-  }, [dims, visible, events, zone, nodePositions])
-
-  // Card sizing
-  const CARD_W = Math.max(100, (dims.w / 2) - 60)
+  // Card width: fits in the space between the canvas edge and the node tick
+  const amp = dims.w > 0 ? Math.min(dims.w / 2 * 0.45, 140) : 140
+  const nodeR = 10
+  const tickLen = 28
+  const cardWidth = Math.max(100, dims.w / 2 - amp * 0.6 - nodeR - tickLen - 16)
 
   return (
     <div ref={containerRef} className="relative w-full h-full">
-      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
-
-      {/* Event cards flanking the path */}
-      {dims.w > 0 && nodePositions.map((node, i) => {
-        const ev = events[i]
-        const isVisible = i < visible
-        const isCritical = ev.critical
-        const isLeft = node.side === 'left'
-
-        // Cards go on the OPPOSITE side from the dot so they point outward
-        const cardLeft = isLeft
-          ? node.x - CARD_W - 20
-          : node.x + 20
-
-        return (
-          <div
-            key={ev.t}
-            className="absolute pointer-events-none transition-all duration-300"
-            style={{
-              left: cardLeft,
-              top: node.y - 18,
-              width: CARD_W,
-              opacity: isVisible ? 1 : 0,
-              transform: isVisible
-                ? 'translateX(0)'
-                : `translateX(${isLeft ? '12px' : '-12px'})`,
-            }}
-          >
-            {/* Connector tick */}
-            <div
-              className="absolute top-4 h-px bg-border"
-              style={{
-                width: 16,
-                left: isLeft ? 'auto' : -16,
-                right: isLeft ? -16 : 'auto',
-              }}
+      {dims.w > 0 && (
+        <>
+          <TimelineCanvas
+            events={events}
+            zone={zone}
+            visible={visible}
+            nodes={nodes}
+            dims={dims}
+          />
+          {nodes.map((node, i) => (
+            <EventCard
+              key={events[i].t}
+              ev={events[i]}
+              node={node}
+              index={i}
+              isVisible={i < visible}
+              zone={zone}
+              cardWidth={cardWidth}
             />
-            <div
-              className={`px-3 py-2 border ${
-                isCritical
-                  ? 'border-[oklch(0.65_0.14_25/0.5)] bg-[oklch(0.65_0.14_25/0.06)]'
-                  : 'border-border bg-background/60'
-              }`}
-            >
-              <p
-                className={`font-mono text-[10px] leading-snug ${
-                  isCritical
-                    ? 'text-[oklch(0.65_0.14_25)]'
-                    : ev.label === 'Now'
-                    ? ZONE_TEXT[zone]
-                    : 'text-muted-foreground'
-                }`}
-              >
-                {ev.label}
-              </p>
-              <p className="font-mono text-[9px] text-foreground/40 mt-0.5 tabular-nums">
-                M{ev.t}
-              </p>
-            </div>
-          </div>
-        )
-      })}
+          ))}
+        </>
+      )}
     </div>
   )
 }
 
-// ─── Score Block ──────────────────────────────────────────────────────────────
+// ─── Score + Zone header ──────────────────────────────────────────────────────
 
-function ScoreBlock({ score, zone }: { score: number; zone: VerdictData['zone'] }) {
+function ScoreHeader({ score, zone, company }: {
+  score: number
+  zone: VerdictData['zone']
+  company: string
+}) {
   const displayed = useCountUp(score)
   const tint = getScoreTint(score)
   return (
     <div
-      className="flex items-center gap-5 px-6 py-4 border-b border-border"
+      className="flex items-center justify-between px-8 py-4 border-b border-border"
       style={{ backgroundColor: tint }}
     >
-      <span className="font-sans text-5xl font-light text-white tabular-nums leading-none">
-        {displayed}
-      </span>
-      <div>
-        <p className="font-mono text-[8px] tracking-[0.25em] uppercase text-muted-foreground">
-          Score
-        </p>
-        <p className={`font-mono text-sm tracking-[0.2em] uppercase ${ZONE_TEXT[zone]}`}>
-          {zone}
-        </p>
+      <div className="flex items-center gap-4">
+        <span className="font-sans text-6xl font-light text-white leading-none tabular-nums">
+          {displayed}
+        </span>
+        <div>
+          <p className="font-mono text-[9px] tracking-[0.3em] uppercase text-muted-foreground">Verdict</p>
+          <p className={`font-mono text-base tracking-[0.2em] uppercase font-medium ${ZONE_TEXT[zone]}`}>
+            {zone}
+          </p>
+        </div>
+      </div>
+      <div className="text-right">
+        <p className="font-sans text-lg font-semibold text-foreground">{company}</p>
+        <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground mt-0.5">Subject</p>
       </div>
     </div>
   )
 }
 
-// ─── Signal Cards ─────────────────────────────────────────────────────────────
+// ─── Compact Signals Row ──────────────────────────────────────────────────────
 
-function SignalCards({ agents }: { agents: VerdictData['agents'] }) {
+function SignalsRow({ agents }: { agents: VerdictData['agents'] }) {
   return (
-    <div className="grid grid-cols-2 border-b border-border">
+    <div className="grid grid-cols-4 border-b border-border">
       {agents.map((a) => {
-        const config = AGENTS.find((ag) => ag.id === a.id)!
+        const config = AGENTS.find(ag => ag.id === a.id)!
         return (
-          <div key={a.id} className="border-r border-b border-border last:border-r-0 p-4 [&:nth-child(even)]:border-r-0 [&:nth-child(n+3)]:border-b-0">
-            <div className="flex items-center justify-between mb-2">
+          <div key={a.id} className="border-r border-border last:border-r-0 px-5 py-3">
+            <div className="flex items-center justify-between mb-1.5">
               <span className={`font-mono text-[9px] tracking-widest uppercase ${config.colorClass}`}>
                 {config.name}
               </span>
-              <span className={`font-mono text-sm font-medium ${config.colorClass}`}>
+              <span className={`font-mono text-sm font-medium tabular-nums ${config.colorClass}`}>
                 {a.score}/10
               </span>
             </div>
-            <p className="font-sans text-[11px] leading-relaxed text-foreground/80">
+            <p className="font-sans text-[11px] leading-relaxed text-foreground/80 line-clamp-2">
               {a.summary}
             </p>
-            <p className="font-mono text-[9px] text-muted-foreground mt-2">
+            <p className="font-mono text-[9px] text-muted-foreground mt-1.5">
               {a.sourceCount} sources
             </p>
           </div>
@@ -337,46 +443,47 @@ function SignalCards({ agents }: { agents: VerdictData['agents'] }) {
   )
 }
 
-// ─── Pattern Match ────────────────────────────────────────────────────────────
+// ─── Bottom Panel: Pattern Match + Counterfactual ─────────────────────────────
 
-function PatternMatch({ closestDead, closestAlive, fork }: {
-  closestDead: VerdictData['closestDead']
-  closestAlive: VerdictData['closestAlive']
-  fork: string
+function BottomPanel({ verdict, company }: {
+  verdict: VerdictData
+  company: string
 }) {
   return (
-    <div className="border-b border-border p-5">
-      <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground mb-3">
-        Pattern Match
-      </p>
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="border border-[oklch(0.65_0.14_25/0.4)] bg-[oklch(0.65_0.14_25/0.05)] p-3">
-          <p className="font-mono text-[8px] uppercase tracking-wide text-[oklch(0.65_0.14_25)] mb-1">Closest Dead</p>
-          <p className="font-sans text-sm font-medium text-foreground">{closestDead.name}</p>
-          <p className="font-mono text-[9px] text-muted-foreground my-1">{closestDead.match}% match</p>
-          <p className="font-sans text-[11px] text-foreground/80 leading-snug">{closestDead.cause}</p>
+    <div className="grid grid-cols-2 border-t border-border">
+      {/* Pattern Match */}
+      <div className="border-r border-border px-6 py-5">
+        <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground mb-4">
+          Pattern Match
+        </p>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="border border-[oklch(0.65_0.14_25/0.4)] bg-[oklch(0.65_0.14_25/0.05)] p-3">
+            <p className="font-mono text-[8px] uppercase tracking-wide text-[oklch(0.65_0.14_25)] mb-1">Closest Dead</p>
+            <p className="font-sans text-sm font-medium text-foreground">{verdict.closestDead.name}</p>
+            <p className="font-mono text-[9px] text-muted-foreground my-1">{verdict.closestDead.match}% match</p>
+            <p className="font-sans text-[11px] text-foreground/80 leading-snug">{verdict.closestDead.cause}</p>
+          </div>
+          <div className="border border-[oklch(0.82_0.09_150/0.4)] bg-[oklch(0.82_0.09_150/0.05)] p-3">
+            <p className="font-mono text-[8px] uppercase tracking-wide text-[oklch(0.82_0.09_150)] mb-1">Closest Living</p>
+            <p className="font-sans text-sm font-medium text-foreground">{verdict.closestAlive.name}</p>
+            <p className="font-mono text-[9px] text-muted-foreground my-1">{verdict.closestAlive.match}% match</p>
+            <p className="font-sans text-[11px] text-foreground/80 leading-snug">{verdict.closestAlive.what}</p>
+          </div>
         </div>
-        <div className="border border-[oklch(0.82_0.09_150/0.4)] bg-[oklch(0.82_0.09_150/0.05)] p-3">
-          <p className="font-mono text-[8px] uppercase tracking-wide text-[oklch(0.82_0.09_150)] mb-1">Closest Living</p>
-          <p className="font-sans text-sm font-medium text-foreground">{closestAlive.name}</p>
-          <p className="font-mono text-[9px] text-muted-foreground my-1">{closestAlive.match}% match</p>
-          <p className="font-sans text-[11px] text-foreground/80 leading-snug">{closestAlive.what}</p>
-        </div>
+        <p className="font-sans text-xs text-foreground/80 leading-relaxed border-t border-border pt-3">
+          {verdict.fork}
+        </p>
       </div>
-      <p className="font-sans text-xs text-foreground/80 leading-relaxed border-t border-border pt-3">{fork}</p>
-    </div>
-  )
-}
 
-// ─── Counterfactual ───────────────────────────────────────────────────────────
-
-function Counterfactual({ text }: { text: string }) {
-  return (
-    <div className="border-b border-border p-5">
-      <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground mb-3">
-        Counterfactual
-      </p>
-      <p className="font-sans text-xs leading-relaxed text-foreground/80">{text}</p>
+      {/* Counterfactual */}
+      <div className="px-6 py-5">
+        <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground mb-4">
+          Counterfactual
+        </p>
+        <p className="font-sans text-sm leading-relaxed text-foreground/80">
+          {verdict.counterfactual}
+        </p>
+      </div>
     </div>
   )
 }
@@ -384,8 +491,11 @@ function Counterfactual({ text }: { text: string }) {
 // ─── Action Bar ───────────────────────────────────────────────────────────────
 
 function ActionBar({ company, score, zone, onCompare, onReset }: {
-  company: string; score: number; zone: VerdictData['zone']
-  onCompare: (c: string) => void; onReset: () => void
+  company: string
+  score: number
+  zone: VerdictData['zone']
+  onCompare: (c: string) => void
+  onReset: () => void
 }) {
   const [challenging, setChallenging] = useState(false)
   const [challengeText, setChallengeText] = useState('')
@@ -396,38 +506,71 @@ function ActionBar({ company, score, zone, onCompare, onReset }: {
   const handleShare = () => {
     setShared(true)
     setTimeout(() => setShared(false), 2000)
-    navigator.clipboard?.writeText(`${company} scored ${score}/100 — ${zone}. Investigated by The Verdict.`)
+    navigator.clipboard?.writeText(
+      `${company} scored ${score}/100 — ${zone}. Investigated by The Verdict.`
+    )
   }
 
-  const inputCls = 'flex-1 bg-muted border border-border px-2 py-1.5 font-sans text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40'
-  const submitCls = 'px-3 py-1.5 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest whitespace-nowrap'
-  const btnCls = 'font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-3 py-1.5 hover:border-foreground/40 whitespace-nowrap'
+  const inputCls = 'flex-1 bg-muted border border-border px-3 py-2 font-sans text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40'
+  const submitCls = 'px-4 py-2 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest whitespace-nowrap hover:bg-foreground/85 transition-colors'
+  const btnCls = 'font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40 whitespace-nowrap'
 
   return (
-    <div className="p-4 flex flex-wrap gap-2 items-center justify-between border-t border-border">
+    <div className="flex flex-wrap gap-3 items-center px-8 py-4 border-t border-border bg-background">
       {challenging ? (
-        <form onSubmit={(e) => { e.preventDefault(); setChallenging(false); setChallengeText('') }} className="flex gap-1 flex-1">
-          <input autoFocus value={challengeText} onChange={(e) => setChallengeText(e.target.value)} placeholder="What signal did we miss?" className={inputCls} />
+        <form
+          onSubmit={(e) => { e.preventDefault(); setChallenging(false); setChallengeText('') }}
+          className="flex gap-2 flex-1 min-w-0"
+        >
+          <input
+            autoFocus
+            value={challengeText}
+            onChange={e => setChallengeText(e.target.value)}
+            placeholder="What signal did we miss?"
+            className={inputCls}
+          />
           <button type="submit" className={submitCls}>Re-run</button>
         </form>
       ) : (
         <button onClick={() => setChallenging(true)} className={btnCls}>Was I wrong?</button>
       )}
+
       {comparing ? (
-        <form onSubmit={(e) => { e.preventDefault(); if (compareText.trim()) { onCompare(compareText.trim()); setComparing(false); setCompareText('') } }} className="flex gap-1 flex-1">
-          <input autoFocus value={compareText} onChange={(e) => setCompareText(e.target.value)} placeholder="Another company" className={inputCls} />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (compareText.trim()) { onCompare(compareText.trim()); setComparing(false); setCompareText('') }
+          }}
+          className="flex gap-2 flex-1 min-w-0"
+        >
+          <input
+            autoFocus
+            value={compareText}
+            onChange={e => setCompareText(e.target.value)}
+            placeholder="Another company"
+            className={inputCls}
+          />
           <button type="submit" className={submitCls}>Compare</button>
         </form>
       ) : (
         <button onClick={() => setComparing(true)} className={btnCls}>Compare</button>
       )}
-      <button onClick={handleShare} className={btnCls}>{shared ? 'Copied' : 'Share'}</button>
-      <button onClick={onReset} className="font-mono text-[10px] text-background bg-foreground hover:bg-foreground/80 transition-colors uppercase tracking-widest px-3 py-1.5 whitespace-nowrap">New case</button>
+
+      <button onClick={handleShare} className={btnCls}>
+        {shared ? 'Copied' : 'Share'}
+      </button>
+
+      <button
+        onClick={onReset}
+        className="font-mono text-[10px] text-background bg-foreground hover:bg-foreground/85 transition-colors uppercase tracking-widest px-4 py-2 whitespace-nowrap"
+      >
+        New case
+      </button>
     </div>
   )
 }
 
-// ─── Verdict Page (3-column) ──────────────────────────────────────────────────
+// ─── Verdict Page ─────────────────────────────────────────────────────────────
 
 interface VerdictPageProps {
   company: string
@@ -437,55 +580,39 @@ interface VerdictPageProps {
 }
 
 export function VerdictPage({ company, verdict, onReset, onCompare }: VerdictPageProps) {
+  // Timeline height: enough vertical space per event for readable cards
+  const timelineH = Math.max(900, verdict.timeline.length * 130)
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground">Verdict</span>
-          <span className="font-sans text-base font-semibold text-foreground">{company}</span>
-        </div>
-        <button onClick={onReset} className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
-          New case
-        </button>
+
+      {/* Score + zone header */}
+      <ScoreHeader score={verdict.score} zone={verdict.zone} company={company} />
+
+      {/* Signal cards row */}
+      <SignalsRow agents={verdict.agents} />
+
+      {/* ── Central timeline (primary focus) ── */}
+      <div className="relative w-full flex-shrink-0" style={{ height: timelineH }}>
+        <FlowingTimeline
+          events={verdict.timeline}
+          zone={verdict.zone}
+          score={verdict.score}
+        />
       </div>
 
-      {/* 3-column body */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* Pattern match + counterfactual below the timeline */}
+      <BottomPanel verdict={verdict} company={company} />
 
-        {/* Left panel: Score + Signal cards */}
-        <div className="w-72 flex-shrink-0 border-r border-border flex flex-col overflow-hidden">
-          <ScoreBlock score={verdict.score} zone={verdict.zone} />
-          <div className="flex-1 overflow-y-auto">
-            <SignalCards agents={verdict.agents} />
-          </div>
-        </div>
+      {/* Action bar */}
+      <ActionBar
+        company={company}
+        score={verdict.score}
+        zone={verdict.zone}
+        onReset={onReset}
+        onCompare={onCompare}
+      />
 
-        {/* Center: Flowing timeline — the primary focus */}
-        <div className="flex-1 overflow-y-auto relative bg-background">
-          <div className="sticky top-0 z-10 px-6 py-3 border-b border-border bg-background/80 backdrop-blur-sm flex items-center justify-between">
-            <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-muted-foreground">Timeline</span>
-            <span className="font-mono text-[10px] text-muted-foreground tabular-nums">{verdict.timeline.length} events · M0 → M84</span>
-          </div>
-          <div style={{ height: Math.max(800, verdict.timeline.length * 140) }}>
-            <FlowingTimeline
-              events={verdict.timeline}
-              zone={verdict.zone}
-              score={verdict.score}
-            />
-          </div>
-        </div>
-
-        {/* Right panel: Pattern match + Counterfactual + Actions */}
-        <div className="w-72 flex-shrink-0 border-l border-border flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto">
-            <PatternMatch closestDead={verdict.closestDead} closestAlive={verdict.closestAlive} fork={verdict.fork} />
-            <Counterfactual text={verdict.counterfactual} />
-          </div>
-          <ActionBar company={company} score={verdict.score} zone={verdict.zone} onReset={onReset} onCompare={onCompare} />
-        </div>
-
-      </div>
     </div>
   )
 }
