@@ -103,7 +103,7 @@ describe('mapPeopleDataset — people.leadership_visible', () => {
 
     expect(f).toBeDefined()
     expect(f!.direction).toBe('survival_positive')
-    expect(f!.value as number).toBeGreaterThanOrEqual(2)
+    expect(f!.value as number).toBe(2)
     expect(f!.confidence).toBe(0.4)
     expect(f!.delta).toBeNull()
   })

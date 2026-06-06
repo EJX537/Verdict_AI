@@ -63,7 +63,9 @@ export function mapPeopleDataset(
     plain_english:
       seniorCount >= 2
         ? `${seniorCount} senior leaders are currently visible on LinkedIn`
-        : `Only ${seniorCount} senior leader(s) visible — leadership bench appears thin`,
+        : seniorCount === 0
+          ? 'No senior leaders visible on LinkedIn'
+          : `Only ${seniorCount} senior leader(s) visible — leadership bench appears thin`,
     as_of: asOf,
   })
 
