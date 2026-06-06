@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { line, curveCatmullRom } from 'd3-shape'
 import { AGENTS, getScoreTint } from '@/lib/mock-data'
 import type { VerdictData } from '@/lib/mock-data'
+import { ShareModal } from './share-modal'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -514,15 +515,7 @@ function ActionBar({ company, score, zone, onCompare, onReset }: {
   const [challengeText, setChallengeText] = useState('')
   const [comparing, setComparing] = useState(false)
   const [compareText, setCompareText] = useState('')
-  const [shared, setShared] = useState(false)
-
-  const handleShare = () => {
-    setShared(true)
-    setTimeout(() => setShared(false), 2000)
-    navigator.clipboard?.writeText(
-      `${company} scored ${score}/100 — ${zone}. Investigated by The Verdict.`
-    )
-  }
+  const [shareOpen, setShareOpen] = useState(false)
 
   const inputCls = 'flex-1 bg-muted border border-border px-3 py-2 font-sans text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40'
   const submitCls = 'px-4 py-2 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest whitespace-nowrap hover:bg-foreground/85 transition-colors'
@@ -569,8 +562,8 @@ function ActionBar({ company, score, zone, onCompare, onReset }: {
         <button onClick={() => setComparing(true)} className={btnCls}>Compare</button>
       )}
 
-      <button onClick={handleShare} className={btnCls}>
-        {shared ? 'Copied' : 'Share'}
+      <button onClick={() => setShareOpen(true)} className={btnCls}>
+        Share
       </button>
 
       <button
@@ -624,6 +617,14 @@ export function VerdictPage({ company, verdict, onReset, onCompare }: VerdictPag
         zone={verdict.zone}
         onReset={onReset}
         onCompare={onCompare}
+      />
+
+      {/* Share modal */}
+      <ShareModal
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        company={company}
+        verdict={verdict}
       />
 
     </div>
