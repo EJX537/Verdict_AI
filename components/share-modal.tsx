@@ -168,7 +168,6 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
   if (!isOpen) return null
 
   const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/verdict?id=${encodeURIComponent(company)}`
-
   // Most provocative agent = furthest from median
   const scores = verdict.agents.map(a => a.score)
   const sortedScores = [...scores].sort((a, b) => a - b)
@@ -221,35 +220,35 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
     a.click()
   }
 
-  // Share with image via Web Share API (mobile) or download + open intent (desktop)
+  // Upload PNG to Blob storage, returns the public URL
+  const uploadImage = async (): Promise<string | null> => {
+    const blob = await svgToPngBlob()
+    if (!blob) return null
+    const formData = new FormData()
+    formData.append('file', new File([blob], 'verdict.png', { type: 'image/png' }))
+    const res = await fetch('/api/share-image', { method: 'POST', body: formData })
+    if (!res.ok) return null
+    const { url } = await res.json()
+    return url as string
+  }
+
+  // Share: upload image, build URL with ogImage param, open platform intent
   const handleShare = async (platform: 'twitter' | 'linkedin') => {
     setSharing(platform)
     try {
-      const blob = await svgToPngBlob()
+      const imageUrl = await uploadImage()
+      const base = `${typeof window !== 'undefined' ? window.location.origin : ''}/verdict`
+      const params = new URLSearchParams({ id: company })
+      if (imageUrl) params.set('ogImage', imageUrl)
+      const pageUrl = `${base}?${params.toString()}`
+
       const text = `I ran ${company} through The Verdict — scored ${verdict.score}/100 (${verdict.zone}). Closest dead: ${verdict.closestDead.name}. Closest living: ${verdict.closestAlive.name}.`
 
-      // Try Web Share API first — attaches the PNG natively on mobile
-      if (blob && typeof navigator.share === 'function' && navigator.canShare?.({ files: [new File([blob], 'verdict.png', { type: 'image/png' })] })) {
-        await navigator.share({
-          title: `The Verdict — ${company}`,
-          text,
-          url: shareUrl,
-          files: [new File([blob], 'verdict.png', { type: 'image/png' })],
-        })
-      } else {
-        // Desktop fallback: download PNG so user can attach it, then open intent
-        if (blob) {
-          const a = document.createElement('a')
-          a.href = URL.createObjectURL(blob)
-          a.download = `verdict-${company.toLowerCase().replace(/\s+/g, '-')}.png`
-          a.click()
-        }
-        const intentUrls: Record<string, string> = {
-          twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`,
-          linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
-        }
-        if (intentUrls[platform]) window.open(intentUrls[platform], '_blank', 'width=600,height=400')
+      const intentUrls: Record<string, string> = {
+        twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(pageUrl)}`,
+        linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(pageUrl)}`,
       }
+      if (intentUrls[platform]) window.open(intentUrls[platform], '_blank', 'width=600,height=400')
     } finally {
       setSharing(null)
     }
