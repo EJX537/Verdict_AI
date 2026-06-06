@@ -46,7 +46,7 @@ export function TopBar({ company, status, onConfirmVerdict }: TopBarProps) {
         {status === 'ready' && onConfirmVerdict && (
           <button
             onClick={onConfirmVerdict}
-            className="font-mono text-xs tracking-[0.2em] uppercase bg-foreground text-background px-4 py-1.5 hover:bg-foreground/90 transition-colors"
+            className="cursor-pointer font-mono text-xs tracking-[0.2em] uppercase bg-foreground text-background px-4 py-1.5 hover:bg-foreground/90 transition-colors"
           >
             Render verdict
           </button>

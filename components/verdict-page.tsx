@@ -50,17 +50,14 @@ const DANGER_HEX = '#c0392b'
 // ─── Node layout ─────────────────────────────────────────────────────────────
 
 /**
- * For N events, compute each node's (x, y) on the canvas.
+ * For N events, compute each node's (x, y) on the canvas and card positioning.
  * x increases evenly left → right.
- * y is driven by each event's health score, log-scaled so drops at the low end
- * are amplified and improvements at the high end compress visually.
- *
- * Log mapping:
- *   normalised = log(score + 1) / log(101)   → [0, 1]
- *   y = topPad + (1 - normalised) * usableH  → high score = near top, low = near bottom
- *
- * side ('above' | 'below') is derived from whether this event's score is
- * above or below the midpoint score of the full timeline.
+ * y is driven by each event's health score (log-scaled).
+ * 
+ * Cards flow spatially:
+ * - Founded (first event) at middle-left
+ * - Doing well (high score) → moves toward top-right
+ * - Poorly (low score) → moves toward bottom-right
  */
 function computeNodes(
   events: VerdictData['timeline'],
@@ -70,24 +67,41 @@ function computeNodes(
   const n = events.length
   const padL = 60
   const padR = 60
-  const padT = 32
-  const padB = 32
+  const padT = 60
+  const padB = 60
   const usableW = cw - padL - padR
   const usableH = ch - padT - padB
-
-  // Median score across all events — used to decide card side
-  const sorted = [...events].map(e => e.score).sort((a, b) => a - b)
-  const median = sorted[Math.floor(n / 2)]
+  const centerY = padT + usableH / 2
 
   return events.map((ev, i) => {
-    const x = padL + (i / (n - 1)) * usableW
+    const x = padL + (i / Math.max(1, n - 1)) * usableW
 
     // Log scale: score ∈ [1,100] → [0,1], top of canvas = high health
     const logNorm = Math.log(ev.score + 1) / Math.log(101)
-    const y = padT + (1 - logNorm) * usableH
+    let y: number
 
-    // Card floats above if score is above median, below if at or under median
-    const side: 'above' | 'below' = ev.score > median ? 'above' : 'below'
+    if (i === 0) {
+      // First event always starts at middle-left
+      y = centerY
+    } else {
+      // Subsequent events trend based on score
+      const prevEvent = events[i - 1]
+      const prevLogNorm = Math.log(prevEvent.score + 1) / Math.log(101)
+      const trendBase = padT + (1 - prevLogNorm) * usableH
+      const scoreBase = padT + (1 - logNorm) * usableH
+      // Blend between previous trend and score-based position
+      y = trendBase * 0.4 + scoreBase * 0.6
+    }
+
+    // Clamp y to bounds with padding for card overflow
+    const cardH = 52
+    const tickLen = 28
+    const nodeR = 10
+    y = Math.max(padT + cardH + tickLen, Math.min(ch - padB - cardH - tickLen, y))
+
+    // side determines whether card renders above or below the curve
+    const sideMultiplier = logNorm > 0.5 ? -1 : 1
+    const side: 'above' | 'below' = sideMultiplier === -1 ? 'above' : 'below'
 
     return { x, y, side }
   })
@@ -267,15 +281,26 @@ function EventCard({
 }) {
   const isCritical = !!ev.critical
   const isNow = ev.label === 'Now'
-  const tickLen = 24
+  const tickLen = 28
   const nodeR = isNow || isCritical ? 10 : 7
-  const cardW = 120
+  const cardW = 130
+  const cardH = 52
 
-  // Card sits above or below the node, centered on the node's x
-  const cardTop = node.side === 'above'
-    ? node.y - nodeR - tickLen - cardHeight
-    : node.y + nodeR + tickLen
-  const cardLeft = node.x - cardW / 2
+  // Card sits above or below the node, with extra spacing to avoid overlap
+  let cardTop = node.side === 'above'
+    ? node.y - nodeR - tickLen - cardH - 2
+    : node.y + nodeR + tickLen + 2
+  let cardLeft = node.x - cardW / 2
+
+  // Clamp to container bounds (assuming container is the parent with known bounds)
+  // These are conservative bounds to prevent overflow
+  const minTop = 0
+  const maxTop = Number.MAX_SAFE_INTEGER // Will be clamped by overflow: hidden on parent
+  const minLeft = -cardW // Allow slight overflow on left
+  const maxLeft = Number.MAX_SAFE_INTEGER // Allow slight overflow on right
+
+  cardTop = Math.max(minTop, Math.min(maxTop, cardTop))
+  cardLeft = Math.max(minLeft, cardLeft)
 
   return (
     <div
@@ -293,18 +318,18 @@ function EventCard({
       }}
     >
       <div
-        className={`px-2 py-1.5 border-t-2 text-center ${
+        className={`px-3 py-2 border-t-2 text-center ${
           isCritical
-            ? 'border-t-[oklch(0.65_0.14_25)] bg-[oklch(0.65_0.14_25/0.08)]'
+            ? 'border-t-[oklch(0.72_0.17_25)] bg-[oklch(0.17_0_0)]'
             : isNow
-            ? `border-t-[${ZONE_COLORS[zone]}] bg-[oklch(0.18_0_0)]`
-            : 'border-t-border bg-[oklch(0.13_0_0)]'
+            ? `border-t-[${ZONE_COLORS[zone]}] bg-[oklch(0.17_0_0)]`
+            : 'border-t-[oklch(0.4_0.1_250)] bg-[oklch(0.16_0_0)]'
         }`}
       >
         <p
-          className={`font-mono text-[10px] font-medium leading-snug ${
+          className={`font-mono text-[11px] font-semibold leading-tight ${
             isCritical
-              ? 'text-[oklch(0.65_0.14_25)]'
+              ? 'text-[oklch(0.75_0.17_25)]'
               : isNow
               ? ZONE_TEXT[zone]
               : 'text-foreground'
@@ -312,7 +337,7 @@ function EventCard({
         >
           {ev.label}
         </p>
-        <p className="font-mono text-[9px] text-muted-foreground mt-0.5 tabular-nums">
+        <p className="font-mono text-[9px] text-foreground/60 mt-1 tabular-nums">
           M{ev.t}
         </p>
       </div>
@@ -367,7 +392,7 @@ function FlowingTimeline({ events, zone, score }: FlowingTimelineProps) {
   const cardHeight = 44
 
   return (
-    <div ref={containerRef} className="relative w-full h-full">
+    <div ref={containerRef} className="relative w-full h-full overflow-hidden">
       {dims.w > 0 && (
         <>
           <TimelineCanvas
@@ -519,8 +544,8 @@ function ActionBar({ company, score, zone, verdict, onCompare, onReset }: {
   const [shareOpen, setShareOpen] = useState(false)
 
   const inputCls = 'flex-1 bg-muted border border-border px-3 py-2 font-sans text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40'
-  const submitCls = 'px-4 py-2 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest whitespace-nowrap hover:bg-foreground/85 transition-colors'
-  const btnCls = 'font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40 whitespace-nowrap'
+  const submitCls = 'cursor-pointer px-4 py-2 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest whitespace-nowrap hover:bg-foreground/85 transition-colors'
+  const btnCls = 'cursor-pointer font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40 whitespace-nowrap'
 
   return (
     <div className="flex flex-wrap gap-3 items-center px-8 py-4 border-t border-border bg-background">
@@ -569,7 +594,7 @@ function ActionBar({ company, score, zone, verdict, onCompare, onReset }: {
 
       <button
         onClick={onReset}
-        className="font-mono text-[10px] text-background bg-foreground hover:bg-foreground/85 transition-colors uppercase tracking-widest px-4 py-2 whitespace-nowrap"
+        className="cursor-pointer font-mono text-[10px] text-background bg-foreground hover:bg-foreground/85 transition-colors uppercase tracking-widest px-4 py-2 whitespace-nowrap"
       >
         New case
       </button>
