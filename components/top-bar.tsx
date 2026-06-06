@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 
 interface TopBarProps {
   company: string
-  status: 'investigating' | 'filing' | 'complete'
+  status: 'investigating' | 'filing' | 'complete' | 'ready'
 }
 
 export function TopBar({ company, status }: TopBarProps) {
@@ -25,6 +25,8 @@ export function TopBar({ company, status }: TopBarProps) {
       ? 'Investigating...'
       : status === 'filing'
       ? 'Filing verdict...'
+      : status === 'ready'
+      ? 'Awaiting confirmation'
       : 'Verdict filed'
 
   return (

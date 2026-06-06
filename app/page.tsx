@@ -37,7 +37,7 @@ const INITIAL_SIGNAL_POINT: SignalPoint = {
 export default function App() {
   const [view, setView] = useState<AppView>('entry')
   const [company, setCompany] = useState('')
-  const [status, setStatus] = useState<'investigating' | 'filing' | 'complete'>('investigating')
+  const [status, setStatus] = useState<'investigating' | 'filing' | 'complete' | 'ready'>('investigating')
   const [agents, setAgents] = useState<AgentState[]>(INITIAL_AGENT_STATES)
   const [evidence, setEvidence] = useState<EvidenceItem[]>([])
   const [signalPoints, setSignalPoints] = useState<SignalPoint[]>([INITIAL_SIGNAL_POINT])
@@ -145,14 +145,9 @@ export default function App() {
               )
             )
           } else if (event.type === 'verdict_ready') {
-            setStatus('filing')
-            const filingTid = setTimeout(() => {
-              clearAll()
-              setVerdict(verdictData)
-              setStatus('complete')
-              setView('verdict')
-            }, 1800)
-            timeoutsRef.current.push(filingTid)
+            clearAll()
+            setVerdict(verdictData)
+            setStatus('ready')
           }
         }, event.delay)
         timeoutsRef.current.push(tid)
@@ -160,6 +155,11 @@ export default function App() {
     },
     [clearAll]
   )
+
+  const handleConfirmVerdict = useCallback(() => {
+    setStatus('complete')
+    setView('verdict')
+  }, [])
 
   const handleReset = useCallback(() => {
     clearAll()
@@ -186,6 +186,7 @@ export default function App() {
         agents={agents}
         evidence={evidence}
         signalPoints={signalPoints}
+        onConfirmVerdict={handleConfirmVerdict}
       />
     )
   }
