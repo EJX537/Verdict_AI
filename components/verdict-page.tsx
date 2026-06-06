@@ -1,15 +1,13 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { line, curveCatmullRom } from 'd3-shape'
 import { AGENTS, getScoreTint } from '@/lib/mock-data'
 import type { VerdictData } from '@/lib/mock-data'
 
-interface ScoreBlockProps {
-  score: number
-  zone: VerdictData['zone']
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function useCountUp(target: number, duration = 1200) {
+function useCountUp(target: number, duration = 1400) {
   const [current, setCurrent] = useState(0)
   useEffect(() => {
     let start: number | null = null
@@ -25,63 +23,417 @@ function useCountUp(target: number, duration = 1200) {
   return current
 }
 
-function ScoreBlock({ score, zone }: ScoreBlockProps) {
-  const displayed = useCountUp(score)
-  const tint = getScoreTint(score)
+const ZONE_COLORS: Record<VerdictData['zone'], string> = {
+  Terminal:  'oklch(0.65 0.14 25)',
+  Critical:  'oklch(0.72 0.14 30)',
+  Guarded:   'oklch(0.78 0.12 55)',
+  Stable:    'oklch(0.82 0.09 150)',
+  Thriving:  'oklch(0.86 0.06 200)',
+}
+const ZONE_HEX: Record<VerdictData['zone'], string> = {
+  Terminal:  '#c0392b',
+  Critical:  '#e67e22',
+  Guarded:   '#d4ac0d',
+  Stable:    '#27ae60',
+  Thriving:  '#2980b9',
+}
+const ZONE_TEXT: Record<VerdictData['zone'], string> = {
+  Terminal:  'text-[oklch(0.65_0.14_25)]',
+  Critical:  'text-[oklch(0.72_0.14_30)]',
+  Guarded:   'text-[oklch(0.78_0.12_55)]',
+  Stable:    'text-[oklch(0.82_0.09_150)]',
+  Thriving:  'text-[oklch(0.86_0.06_200)]',
+}
+const DANGER_HEX = '#c0392b'
 
-  const zoneColors: Record<VerdictData['zone'], string> = {
-    Terminal: 'text-[oklch(0.65_0.14_25)]',
-    Critical: 'text-[oklch(0.72_0.14_30)]',
-    Guarded: 'text-[oklch(0.78_0.12_55)]',
-    Stable: 'text-[oklch(0.82_0.09_150)]',
-    Thriving: 'text-[oklch(0.86_0.06_200)]',
-  }
+// ─── Node layout ─────────────────────────────────────────────────────────────
+
+/**
+ * For N events, compute each node's (x, y) on the canvas.
+ * The path flows LEFT → RIGHT. Each node's x increases evenly.
+ * y oscillates above/below the horizontal midline (the wave).
+ */
+function computeNodes(
+  events: VerdictData['timeline'],
+  cw: number,
+  ch: number,
+): { x: number; y: number; side: 'above' | 'below' }[] {
+  const n = events.length
+  const padL = 60
+  const padR = 60
+  const usableW = cw - padL - padR
+  const cy = ch / 2
+  // Amplitude: how far above/below midline the node sits
+  const amp = Math.min(cy * 0.5, 80)
+
+  return events.map((_, i) => {
+    const x = padL + (i / (n - 1)) * usableW
+    const side: 'above' | 'below' = i % 2 === 0 ? 'above' : 'below'
+    const signedOffset = i % 2 === 0 ? -amp : amp
+    return { x, y: cy + signedOffset, side }
+  })
+}
+
+// ─── Canvas Timeline ──────────────────────────────────────────────────────────
+
+interface TimelineCanvasProps {
+  events: VerdictData['timeline']
+  zone: VerdictData['zone']
+  visible: number
+  nodes: { x: number; y: number; side: 'above' | 'below' }[]
+  dims: { w: number; h: number }
+}
+
+function TimelineCanvas({ events, zone, visible, nodes, dims }: TimelineCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || nodes.length === 0 || dims.w === 0) return
+    const dpr = window.devicePixelRatio || 1
+    canvas.width  = dims.w * dpr
+    canvas.height = dims.h * dpr
+    canvas.style.width  = `${dims.w}px`
+    canvas.style.height = `${dims.h}px`
+    const ctx = canvas.getContext('2d')!
+    ctx.scale(dpr, dpr)
+    ctx.clearRect(0, 0, dims.w, dims.h)
+
+    const pts = nodes.map(n => ({ x: n.x, y: n.y }))
+
+    // D3 line generator with CatmullRom curve (smooth S-bends)
+    const pathGen = line<{ x: number; y: number }>()
+      .x(d => d.x)
+      .y(d => d.y)
+      .curve(curveCatmullRom.alpha(0.5))
+
+    // Build a Path2D from the D3 string
+    const buildPath = (points: typeof pts) => new Path2D(pathGen(points) ?? '')
+
+    // 1. Ghost track (full path, dim dashed)
+    const ghostPath = buildPath(pts)
+    ctx.save()
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'
+    ctx.lineWidth = 2
+    ctx.setLineDash([4, 8])
+    ctx.stroke(ghostPath)
+    ctx.restore()
+
+    // 2. Lit track up to `visible` — gradient from red → zone color
+    if (visible > 1) {
+      const litPts = pts.slice(0, Math.min(visible, pts.length))
+      const litPath = buildPath(litPts)
+
+      // Horizontal gradient: left (danger) → right (zone color)
+      const x0 = litPts[0].x
+      const x1 = litPts[litPts.length - 1].x
+      const grad = ctx.createLinearGradient(x0, 0, x1, 0)
+      grad.addColorStop(0,   DANGER_HEX)
+      grad.addColorStop(0.4, '#e67e22')
+      grad.addColorStop(0.7, '#d4ac0d')
+      grad.addColorStop(1,   ZONE_HEX[zone])
+
+      ctx.save()
+      ctx.strokeStyle = grad
+      ctx.lineWidth = 3
+      ctx.setLineDash([])
+      ctx.shadowColor = ZONE_HEX[zone]
+      ctx.shadowBlur = 6
+      ctx.stroke(litPath)
+      ctx.restore()
+    }
+
+    // 3. Nodes
+    nodes.forEach((node, i) => {
+      const ev = events[i]
+      const isLit = i < visible
+      const isCritical = !!ev.critical
+      const isNow = ev.label === 'Now'
+      const r = isNow || isCritical ? 10 : 7
+
+      if (!isLit) {
+        // Ghost dot
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(node.x, node.y, 4, 0, Math.PI * 2)
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)'
+        ctx.lineWidth = 1
+        ctx.stroke()
+        ctx.restore()
+        return
+      }
+
+      // Glow ring for critical / now
+      if (isCritical || isNow) {
+        const glowColor = isCritical ? DANGER_HEX : ZONE_HEX[zone]
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(node.x, node.y, r + 6, 0, Math.PI * 2)
+        ctx.fillStyle = glowColor + '22'
+        ctx.fill()
+        ctx.restore()
+      }
+
+      // Circle fill
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, r, 0, Math.PI * 2)
+      if (isCritical) {
+        ctx.fillStyle = DANGER_HEX + '33'
+        ctx.strokeStyle = DANGER_HEX
+      } else if (isNow) {
+        ctx.fillStyle = ZONE_HEX[zone] + '33'
+        ctx.strokeStyle = ZONE_HEX[zone]
+      } else {
+        // Gradient lit color based on position
+        const t = i / (events.length - 1)
+        const r2 = Math.round(192 - t * 65)
+        const g2 = Math.round(57  + t * 80)
+        const b2 = Math.round(43  + t * 100)
+        ctx.fillStyle = `rgba(${r2},${g2},${b2},0.25)`
+        ctx.strokeStyle = `rgba(${r2},${g2},${b2},0.9)`
+      }
+      ctx.lineWidth = 1.5
+      ctx.fill()
+      ctx.stroke()
+      ctx.restore()
+
+      // Inner dot
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, isCritical || isNow ? 3.5 : 2.5, 0, Math.PI * 2)
+      ctx.fillStyle = isCritical ? DANGER_HEX : isNow ? ZONE_HEX[zone] : 'rgba(255,255,255,0.7)'
+      ctx.fill()
+      ctx.restore()
+
+      // Connector tick: vertical line from node up or down toward card
+      const tickLen = 24
+      const tickY1 = node.side === 'above' ? node.y - r : node.y + r
+      const tickY2 = node.side === 'above' ? tickY1 - tickLen : tickY1 + tickLen
+      ctx.save()
+      ctx.beginPath()
+      ctx.moveTo(node.x, tickY1)
+      ctx.lineTo(node.x, tickY2)
+      ctx.strokeStyle = isCritical ? DANGER_HEX + '80' : 'rgba(255,255,255,0.2)'
+      ctx.lineWidth = 1
+      ctx.stroke()
+      ctx.restore()
+    })
+  }, [dims, visible, events, zone, nodes])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 pointer-events-none"
+    />
+  )
+}
+
+// ─── Event Card ───────────────────────────────────────────────────────────────
+
+function EventCard({
+  ev,
+  node,
+  index,
+  isVisible,
+  zone,
+  cardHeight,
+}: {
+  ev: VerdictData['timeline'][number]
+  node: { x: number; y: number; side: 'above' | 'below' }
+  index: number
+  isVisible: boolean
+  zone: VerdictData['zone']
+  cardHeight: number
+}) {
+  const isCritical = !!ev.critical
+  const isNow = ev.label === 'Now'
+  const tickLen = 24
+  const nodeR = isNow || isCritical ? 10 : 7
+  const cardW = 120
+
+  // Card sits above or below the node, centered on the node's x
+  const cardTop = node.side === 'above'
+    ? node.y - nodeR - tickLen - cardHeight
+    : node.y + nodeR + tickLen
+  const cardLeft = node.x - cardW / 2
 
   return (
     <div
-      className="text-center py-16 transition-all duration-1000"
-      style={{ backgroundColor: tint }}
+      className="absolute pointer-events-none"
+      style={{
+        left: cardLeft,
+        top: cardTop,
+        width: cardW,
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible
+          ? 'translateY(0)'
+          : `translateY(${node.side === 'above' ? '10px' : '-10px'})`,
+        transition: 'opacity 0.35s ease, transform 0.35s ease',
+        transitionDelay: `${index * 60}ms`,
+      }}
     >
-      <p className="font-mono text-xs tracking-[0.3em] uppercase text-muted-foreground mb-6">
-        Verdict
-      </p>
-      <div className="score-reveal">
-        <span className="font-sans text-[9rem] font-light text-foreground leading-none tabular-nums">
-          {displayed}
-        </span>
+      <div
+        className={`px-2 py-1.5 border-t-2 text-center ${
+          isCritical
+            ? 'border-t-[oklch(0.65_0.14_25)] bg-[oklch(0.65_0.14_25/0.08)]'
+            : isNow
+            ? `border-t-[${ZONE_COLORS[zone]}] bg-[oklch(0.18_0_0)]`
+            : 'border-t-border bg-[oklch(0.13_0_0)]'
+        }`}
+      >
+        <p
+          className={`font-mono text-[10px] font-medium leading-snug ${
+            isCritical
+              ? 'text-[oklch(0.65_0.14_25)]'
+              : isNow
+              ? ZONE_TEXT[zone]
+              : 'text-foreground'
+          }`}
+        >
+          {ev.label}
+        </p>
+        <p className="font-mono text-[9px] text-muted-foreground mt-0.5 tabular-nums">
+          M{ev.t}
+        </p>
       </div>
-      <p className={`font-mono text-sm tracking-[0.25em] uppercase mt-4 ${zoneColors[zone]}`}>
-        {zone}
-      </p>
     </div>
   )
 }
 
-interface SignalCardsProps {
-  agents: VerdictData['agents']
+// ─── Flowing Timeline ─────────────────────────────────────────────────────────
+
+interface FlowingTimelineProps {
+  events: VerdictData['timeline']
+  zone: VerdictData['zone']
+  score: number
 }
 
-function SignalCards({ agents }: SignalCardsProps) {
+function FlowingTimeline({ events, zone, score }: FlowingTimelineProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(0)
+  const [dims, setDims] = useState({ w: 0, h: 0 })
+  const animRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Measure container
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      setDims({ w: el.offsetWidth, h: el.offsetHeight })
+    })
+    ro.observe(el)
+    setDims({ w: el.offsetWidth, h: el.offsetHeight })
+    return () => ro.disconnect()
+  }, [])
+
+  // Stagger reveal
+  useEffect(() => {
+    setVisible(0)
+    let i = 0
+    const tick = () => {
+      setVisible(v => v + 1)
+      i++
+      if (i < events.length) animRef.current = setTimeout(tick, 180)
+    }
+    animRef.current = setTimeout(tick, 400)
+    return () => { if (animRef.current) clearTimeout(animRef.current) }
+  }, [events])
+
+  const nodes = dims.w > 0 && dims.h > 0
+    ? computeNodes(events, dims.w, dims.h)
+    : []
+
+  // Card height: fits in the space above/below the node tick
+  const amp = dims.h > 0 ? Math.min(dims.h / 2 * 0.5, 80) : 80
+  const nodeR = 10
+  const tickLen = 24
+  const cardHeight = Math.max(44, amp - nodeR - tickLen - 8)
+
   return (
-    <div className="grid grid-cols-2 gap-px bg-border">
+    <div ref={containerRef} className="relative w-full h-full">
+      {dims.w > 0 && (
+        <>
+          <TimelineCanvas
+            events={events}
+            zone={zone}
+            visible={visible}
+            nodes={nodes}
+            dims={dims}
+          />
+          {nodes.map((node, i) => (
+            <EventCard
+              key={events[i].t}
+              ev={events[i]}
+              node={node}
+              index={i}
+              isVisible={i < visible}
+              zone={zone}
+              cardHeight={cardHeight}
+            />
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── Score + Zone header ──────────────────────────────────────────────────────
+
+function ScoreHeader({ score, zone, company }: {
+  score: number
+  zone: VerdictData['zone']
+  company: string
+}) {
+  const displayed = useCountUp(score)
+  const tint = getScoreTint(score)
+  return (
+    <div
+      className="flex items-center justify-between px-8 py-4 border-b border-border"
+      style={{ backgroundColor: tint }}
+    >
+      <div className="flex items-center gap-4">
+        <span className="font-sans text-6xl font-light text-white leading-none tabular-nums">
+          {displayed}
+        </span>
+        <div>
+          <p className="font-mono text-[9px] tracking-[0.3em] uppercase text-muted-foreground">Verdict</p>
+          <p className={`font-mono text-base tracking-[0.2em] uppercase font-medium ${ZONE_TEXT[zone]}`}>
+            {zone}
+          </p>
+        </div>
+      </div>
+      <div className="text-right">
+        <p className="font-sans text-lg font-semibold text-foreground">{company}</p>
+        <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground mt-0.5">Subject</p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Compact Signals Row ──────────────────────────────────────────────────────
+
+function SignalsRow({ agents }: { agents: VerdictData['agents'] }) {
+  return (
+    <div className="grid grid-cols-4 border-b border-border">
       {agents.map((a) => {
-        const config = AGENTS.find((ag) => ag.id === a.id)!
+        const config = AGENTS.find(ag => ag.id === a.id)!
         return (
-          <div key={a.id} className="bg-card p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className={`font-mono text-[10px] tracking-[0.2em] uppercase ${config.colorClass}`}>
+          <div key={a.id} className="border-r border-border last:border-r-0 px-5 py-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className={`font-mono text-[9px] tracking-widest uppercase ${config.colorClass}`}>
                 {config.name}
               </span>
-              <span className={`font-mono text-sm font-medium ${config.colorClass}`}>
+              <span className={`font-mono text-sm font-medium tabular-nums ${config.colorClass}`}>
                 {a.score}/10
               </span>
             </div>
-            <p className="font-sans text-xs leading-relaxed text-foreground/80 mb-3">
+            <p className="font-sans text-[11px] leading-relaxed text-foreground/80 line-clamp-2">
               {a.summary}
             </p>
-            <span className="font-mono text-[10px] text-muted-foreground">
+            <p className="font-mono text-[9px] text-muted-foreground mt-1.5">
               {a.sourceCount} sources
-            </span>
+            </p>
           </div>
         )
       })}
@@ -89,147 +441,60 @@ function SignalCards({ agents }: SignalCardsProps) {
   )
 }
 
-interface PatternMatchProps {
-  closestDead: VerdictData['closestDead']
-  closestAlive: VerdictData['closestAlive']
-  fork: string
-}
+// ─── Bottom Panel: Pattern Match + Counterfactual ─────────────────────────────
 
-function PatternMatch({ closestDead, closestAlive, fork }: PatternMatchProps) {
+function BottomPanel({ verdict, company }: {
+  verdict: VerdictData
+  company: string
+}) {
   return (
-    <div className="border border-border p-6">
-      <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground mb-5">
-        Pattern Match
-      </p>
-      <div className="grid grid-cols-2 gap-4 mb-5">
-        <div className="border border-[oklch(0.65_0.14_25/0.4)] bg-[oklch(0.65_0.14_25/0.06)] p-4">
-          <p className="font-mono text-[10px] uppercase tracking-wide text-[oklch(0.65_0.14_25)] mb-2">
-            Closest Dead
-          </p>
-          <p className="font-sans text-sm font-medium text-foreground mb-1">{closestDead.name}</p>
-          <p className="font-mono text-xs text-muted-foreground mb-2">
-            {closestDead.match}% match
-          </p>
-          <p className="font-sans text-xs text-foreground/80 leading-relaxed">
-            Cause: {closestDead.cause}
-          </p>
-        </div>
-        <div className="border border-[oklch(0.82_0.09_150/0.4)] bg-[oklch(0.82_0.09_150/0.06)] p-4">
-          <p className="font-mono text-[10px] uppercase tracking-wide text-[oklch(0.82_0.09_150)] mb-2">
-            Closest Living
-          </p>
-          <p className="font-sans text-sm font-medium text-foreground mb-1">{closestAlive.name}</p>
-          <p className="font-mono text-xs text-muted-foreground mb-2">
-            {closestAlive.match}% match
-          </p>
-          <p className="font-sans text-xs text-foreground/80 leading-relaxed">
-            Saved by: {closestAlive.what}
-          </p>
-        </div>
-      </div>
-      <p className="font-sans text-sm text-foreground/80 leading-relaxed border-t border-border pt-4">
-        {fork}
-      </p>
-    </div>
-  )
-}
-
-interface CounterfactualProps {
-  text: string
-}
-
-function Counterfactual({ text }: CounterfactualProps) {
-  return (
-    <div className="border border-border p-6">
-      <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground mb-4">
-        Counterfactual
-      </p>
-      <p className="font-sans text-sm leading-relaxed text-foreground/80">
-        {text}
-      </p>
-    </div>
-  )
-}
-
-interface TimelineScrubberProps {
-  events: VerdictData['timeline']
-}
-
-function TimelineScrubber({ events }: TimelineScrubberProps) {
-  const [scrubValue, setScrubValue] = useState(100)
-  const maxT = events[events.length - 1]?.t ?? 100
-  const visibleUpTo = (scrubValue / 100) * maxT
-
-  return (
-    <div className="border border-border p-6">
-      <div className="flex items-center justify-between mb-5">
-        <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground">
-          Timeline
+    <div className="grid grid-cols-2 border-t border-border">
+      {/* Pattern Match */}
+      <div className="border-r border-border px-6 py-5">
+        <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground mb-4">
+          Pattern Match
         </p>
-        <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
-          Month {Math.round(visibleUpTo)}
-        </span>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="border border-[oklch(0.65_0.14_25/0.4)] bg-[oklch(0.65_0.14_25/0.05)] p-3">
+            <p className="font-mono text-[8px] uppercase tracking-wide text-[oklch(0.65_0.14_25)] mb-1">Closest Dead</p>
+            <p className="font-sans text-sm font-medium text-foreground">{verdict.closestDead.name}</p>
+            <p className="font-mono text-[9px] text-muted-foreground my-1">{verdict.closestDead.match}% match</p>
+            <p className="font-sans text-[11px] text-foreground/80 leading-snug">{verdict.closestDead.cause}</p>
+          </div>
+          <div className="border border-[oklch(0.82_0.09_150/0.4)] bg-[oklch(0.82_0.09_150/0.05)] p-3">
+            <p className="font-mono text-[8px] uppercase tracking-wide text-[oklch(0.82_0.09_150)] mb-1">Closest Living</p>
+            <p className="font-sans text-sm font-medium text-foreground">{verdict.closestAlive.name}</p>
+            <p className="font-mono text-[9px] text-muted-foreground my-1">{verdict.closestAlive.match}% match</p>
+            <p className="font-sans text-[11px] text-foreground/80 leading-snug">{verdict.closestAlive.what}</p>
+          </div>
+        </div>
+        <p className="font-sans text-xs text-foreground/80 leading-relaxed border-t border-border pt-3">
+          {verdict.fork}
+        </p>
       </div>
 
-      {/* Event track */}
-      <div className="relative mb-4">
-        <div className="h-px bg-border w-full" />
-        {events.map((ev) => {
-          const pct = (ev.t / maxT) * 100
-          const visible = ev.t <= visibleUpTo
-          return (
-            <div
-              key={ev.t}
-              className={`absolute top-0 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${visible ? 'opacity-100' : 'opacity-25'}`}
-              style={{ left: `${pct}%` }}
-            >
-              <div
-                className={`w-2 h-2 rounded-full border ${ev.critical ? 'border-[oklch(0.65_0.14_25)] bg-[oklch(0.65_0.14_25/0.5)]' : 'border-muted-foreground bg-background'}`}
-              />
-              <div
-                className={`absolute top-3 -translate-x-1/2 whitespace-nowrap font-mono text-[9px] ${
-                  ev.critical ? 'text-[oklch(0.65_0.14_25)]' : 'text-muted-foreground'
-                }`}
-                style={{ left: '50%' }}
-              >
-                {ev.label}
-              </div>
-              {ev.label === 'Now' && (
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 h-4 w-px bg-foreground/40" />
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Scrubber */}
-      <div className="mt-8">
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={scrubValue}
-          onChange={(e) => setScrubValue(Number(e.target.value))}
-          className="w-full accent-foreground h-px bg-border appearance-none cursor-pointer"
-          style={{
-            WebkitAppearance: 'none',
-            background: `linear-gradient(to right, oklch(0.55 0 0) ${scrubValue}%, oklch(0.22 0 0) ${scrubValue}%)`,
-          }}
-        />
+      {/* Counterfactual */}
+      <div className="px-6 py-5">
+        <p className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground mb-4">
+          Counterfactual
+        </p>
+        <p className="font-sans text-sm leading-relaxed text-foreground/80">
+          {verdict.counterfactual}
+        </p>
       </div>
     </div>
   )
 }
 
-interface ActionBarProps {
+// ─── Action Bar ───────────────────────────────────────────────────────────────
+
+function ActionBar({ company, score, zone, onCompare, onReset }: {
   company: string
   score: number
   zone: VerdictData['zone']
-  onCompare: (company: string) => void
+  onCompare: (c: string) => void
   onReset: () => void
-}
-
-function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps) {
+}) {
   const [challenging, setChallenging] = useState(false)
   const [challengeText, setChallengeText] = useState('')
   const [comparing, setComparing] = useState(false)
@@ -239,118 +504,71 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
   const handleShare = () => {
     setShared(true)
     setTimeout(() => setShared(false), 2000)
-    navigator.clipboard?.writeText(`${company} scored ${score}/100 — ${zone}. Investigated by The Verdict.`)
+    navigator.clipboard?.writeText(
+      `${company} scored ${score}/100 — ${zone}. Investigated by The Verdict.`
+    )
   }
 
+  const inputCls = 'flex-1 bg-muted border border-border px-3 py-2 font-sans text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40'
+  const submitCls = 'px-4 py-2 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest whitespace-nowrap hover:bg-foreground/85 transition-colors'
+  const btnCls = 'font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40 whitespace-nowrap'
+
   return (
-    <div className="border-t border-border p-6">
-      <div className="flex items-start gap-3">
-        {/* Challenge */}
-        <div className="flex-1">
-          {challenging ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                setChallenging(false)
-                setChallengeText('')
-              }}
-              className="flex gap-2"
-            >
-              <input
-                autoFocus
-                value={challengeText}
-                onChange={(e) => setChallengeText(e.target.value)}
-                placeholder="What signal did we miss?"
-                className="flex-1 bg-muted border border-border px-3 py-1.5 font-sans text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40"
-              />
-              <button
-                type="submit"
-                className="px-3 py-1.5 bg-foreground text-background font-mono text-[10px] uppercase tracking-widest"
-              >
-                Re-run
-              </button>
-              <button
-                type="button"
-                onClick={() => setChallenging(false)}
-                className="px-3 py-1.5 border border-border font-mono text-[10px] text-foreground/70 uppercase tracking-widest"
-              >
-                Cancel
-              </button>
-            </form>
-          ) : (
-            <button
-              onClick={() => setChallenging(true)}
-              className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
-            >
-              Was I wrong?
-            </button>
-          )}
-        </div>
-
-        {/* Compare */}
-        <div>
-          {comparing ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                if (compareText.trim()) {
-                  onCompare(compareText.trim())
-                  setComparing(false)
-                  setCompareText('')
-                }
-              }}
-              className="flex gap-2"
-            >
-              <input
-                autoFocus
-                value={compareText}
-                onChange={(e) => setCompareText(e.target.value)}
-                placeholder="Another company"
-                className="w-40 bg-muted border border-border px-3 py-1.5 font-sans text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40"
-              />
-              <button
-                type="submit"
-                className="px-3 py-1.5 bg-foreground text-background font-mono text-[10px] uppercase tracking-widest"
-              >
-                Compare
-              </button>
-              <button
-                type="button"
-                onClick={() => setComparing(false)}
-                className="px-3 py-1.5 border border-border font-mono text-[10px] text-foreground/70 uppercase tracking-widest"
-              >
-                Cancel
-              </button>
-            </form>
-          ) : (
-            <button
-              onClick={() => setComparing(true)}
-              className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
-            >
-              Compare another
-            </button>
-          )}
-        </div>
-
-        {/* Share */}
-        <button
-          onClick={handleShare}
-          className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
+    <div className="flex flex-wrap gap-3 items-center px-8 py-4 border-t border-border bg-background">
+      {challenging ? (
+        <form
+          onSubmit={(e) => { e.preventDefault(); setChallenging(false); setChallengeText('') }}
+          className="flex gap-2 flex-1 min-w-0"
         >
-          {shared ? 'Copied' : 'Share'}
-        </button>
+          <input
+            autoFocus
+            value={challengeText}
+            onChange={e => setChallengeText(e.target.value)}
+            placeholder="What signal did we miss?"
+            className={inputCls}
+          />
+          <button type="submit" className={submitCls}>Re-run</button>
+        </form>
+      ) : (
+        <button onClick={() => setChallenging(true)} className={btnCls}>Was I wrong?</button>
+      )}
 
-        {/* New case */}
-        <button
-          onClick={onReset}
-          className="font-mono text-xs text-background bg-foreground hover:bg-foreground/80 transition-colors uppercase tracking-widest px-4 py-2 ml-auto"
+      {comparing ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (compareText.trim()) { onCompare(compareText.trim()); setComparing(false); setCompareText('') }
+          }}
+          className="flex gap-2 flex-1 min-w-0"
         >
-          New case
-        </button>
-      </div>
+          <input
+            autoFocus
+            value={compareText}
+            onChange={e => setCompareText(e.target.value)}
+            placeholder="Another company"
+            className={inputCls}
+          />
+          <button type="submit" className={submitCls}>Compare</button>
+        </form>
+      ) : (
+        <button onClick={() => setComparing(true)} className={btnCls}>Compare</button>
+      )}
+
+      <button onClick={handleShare} className={btnCls}>
+        {shared ? 'Copied' : 'Share'}
+      </button>
+
+      <button
+        onClick={onReset}
+        className="font-mono text-[10px] text-background bg-foreground hover:bg-foreground/85 transition-colors uppercase tracking-widest px-4 py-2 whitespace-nowrap"
+      >
+        New case
+      </button>
     </div>
   )
 }
+
+// ─── Verdict Page ─────────────────────────────────────────────────────────────
 
 interface VerdictPageProps {
   company: string
@@ -361,60 +579,38 @@ interface VerdictPageProps {
 
 export function VerdictPage({ company, verdict, onReset, onCompare }: VerdictPageProps) {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-border">
-        <div className="flex items-center gap-4">
-          <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground">
-            Verdict
-          </span>
-          <span className="font-sans text-base font-semibold text-foreground">{company}</span>
-        </div>
-        <button
-          onClick={onReset}
-          className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-        >
-          New case
-        </button>
-      </div>
+    <div className="min-h-screen bg-background flex flex-col gap-12 p-8">
 
-      <div className="max-w-4xl mx-auto px-6 py-0 verdict-slide">
-        {/* Score block */}
-        <ScoreBlock score={verdict.score} zone={verdict.zone} />
+      {/* Score + zone header */}
+      <ScoreHeader score={verdict.score} zone={verdict.zone} company={company} />
 
-        {/* Signal cards */}
-        <div className="mt-px">
-          <SignalCards agents={verdict.agents} />
-        </div>
+      {/* Signal cards row */}
+      <SignalsRow agents={verdict.agents} />
 
-        {/* Pattern match */}
-        <div className="mt-4">
-          <PatternMatch
-            closestDead={verdict.closestDead}
-            closestAlive={verdict.closestAlive}
-            fork={verdict.fork}
-          />
-        </div>
-
-        {/* Counterfactual */}
-        <div className="mt-4">
-          <Counterfactual text={verdict.counterfactual} />
-        </div>
-
-        {/* Timeline */}
-        <div className="mt-4">
-          <TimelineScrubber events={verdict.timeline} />
-        </div>
-
-        {/* Action bar */}
-        <ActionBar
-          company={company}
-          score={verdict.score}
+      {/* ── Central timeline (primary focus) ── */}
+      <div className="relative w-full flex-shrink-0" style={{ height: 340 }}>
+        <FlowingTimeline
+          events={verdict.timeline}
           zone={verdict.zone}
-          onReset={onReset}
-          onCompare={onCompare}
+          score={verdict.score}
         />
       </div>
+
+      {/* Pattern match + counterfactual below the timeline */}
+      <BottomPanel verdict={verdict} company={company} />
+
+      {/* Spacer that grows to push action bar to bottom */}
+      <div className="flex-grow" />
+
+      {/* Action bar */}
+      <ActionBar
+        company={company}
+        score={verdict.score}
+        zone={verdict.zone}
+        onReset={onReset}
+        onCompare={onCompare}
+      />
+
     </div>
   )
 }
