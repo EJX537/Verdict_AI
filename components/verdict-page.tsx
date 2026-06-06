@@ -594,7 +594,7 @@ function ActionBar({ company, score, zone, verdict, onCompare, onReset }: {
 
       <button
         onClick={onReset}
-        className="font-mono text-[10px] text-background bg-foreground hover:bg-foreground/85 transition-colors uppercase tracking-widest px-4 py-2 whitespace-nowrap"
+        className="cursor-pointer font-mono text-[10px] text-background bg-foreground hover:bg-foreground/85 transition-colors uppercase tracking-widest px-4 py-2 whitespace-nowrap"
       >
         New case
       </button>
