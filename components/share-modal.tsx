@@ -102,7 +102,7 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
             {/* Fill */}
             <rect x={trackX} y={rowY - 2} width={fillW} height={4} rx={1} fill={cfg?.chartColor ?? '#fff'} />
             {/* Score value right-aligned */}
-            <text x={W - 40} y={rowY} fontFamily="ui-monospace, monospace" fontSize={9} fill="rgba(255,255,255,0.6)" textAnchor="end" dominantBaseline="middle">
+            <text x={W - 40} y={rowY} fontFamily="ui-monospace, monospace" fontSize={12} fontWeight={600} fill="rgba(255,255,255,0.8)" textAnchor="end" dominantBaseline="middle">
               {a.score.toFixed(1)}
             </text>
           </g>
@@ -112,24 +112,26 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
       {/* Divider */}
       <line x1={40} y1={248} x2={W - 40} y2={248} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
 
-      {/* Pattern match columns */}
-      <text x={40} y={266} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.35)" letterSpacing={2}>
+      {/* Pattern match columns — improved layout */}
+      {/* Closest dead */}
+      <text x={40} y={258} fontFamily="ui-monospace, monospace" fontSize={7} fill="rgba(255,255,255,0.35)" letterSpacing={3}>
         CLOSEST DEAD
       </text>
-      <text x={40} y={282} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={13} fontWeight={600} fill="#ffffff">
+      <text x={40} y={278} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={15} fontWeight={700} fill="#ffffff">
         {verdict.closestDead.name}
       </text>
-      <text x={40} y={296} fontFamily="ui-monospace, monospace" fontSize={9} fill="rgba(255,255,255,0.4)">
+      <text x={40} y={295} fontFamily="ui-monospace, monospace" fontSize={10} fontWeight={600} fill="rgba(255,255,255,0.55)">
         {verdict.closestDead.match}% match
       </text>
 
-      <text x={220} y={266} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.35)" letterSpacing={2}>
+      {/* Closest living */}
+      <text x={300} y={258} fontFamily="ui-monospace, monospace" fontSize={7} fill="rgba(255,255,255,0.35)" letterSpacing={3}>
         CLOSEST LIVING
       </text>
-      <text x={220} y={282} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={13} fontWeight={600} fill="#ffffff">
+      <text x={300} y={278} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={15} fontWeight={700} fill="#ffffff">
         {verdict.closestAlive.name}
       </text>
-      <text x={220} y={296} fontFamily="ui-monospace, monospace" fontSize={9} fill="rgba(255,255,255,0.4)">
+      <text x={300} y={295} fontFamily="ui-monospace, monospace" fontSize={10} fontWeight={600} fill="rgba(255,255,255,0.55)">
         {verdict.closestAlive.match}% match
       </text>
 
