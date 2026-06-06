@@ -36,56 +36,6 @@ function makeFinding(id: string): Finding {
   }
 }
 
-// ─── Fake store factory ───────────────────────────────────────────────────────
-
-function makeFakeStore(): Pick<Store, 'updateDealStage' | 'saveDealResult' | 'failDeal'> & {
-  stages: string[]
-  savedResult: Parameters<Store['saveDealResult']>[1] | null
-  failedWith: string | null
-} {
-  const stages: string[] = []
-  let savedResult: Parameters<Store['saveDealResult']>[1] | null = null
-  let failedWith: string | null = null
-
-  return {
-    stages,
-    savedResult: null as Parameters<Store['saveDealResult']>[1] | null,
-    failedWith: null as string | null,
-
-    async updateDealStage(_id: string, stage: string) {
-      stages.push(stage)
-    },
-
-    async saveDealResult(_id: string, r: Parameters<Store['saveDealResult']>[1]) {
-      savedResult = r
-      // Update the reference on the outer object (closure trick)
-      store.savedResult = r
-    },
-
-    async failDeal(_id: string, message: string) {
-      failedWith = message
-      store.failedWith = message
-    },
-  }
-
-  // eslint-disable-next-line no-var
-  var store = {
-    stages,
-    savedResult,
-    failedWith,
-    async updateDealStage(_id: string, stage: string) {
-      stages.push(stage)
-    },
-    async saveDealResult(_id: string, r: Parameters<Store['saveDealResult']>[1]) {
-      store.savedResult = r
-    },
-    async failDeal(_id: string, message: string) {
-      store.failedWith = message
-    },
-  }
-  return store
-}
-
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('orchestrateDeal — happy path', () => {

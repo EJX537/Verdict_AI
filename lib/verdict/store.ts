@@ -83,6 +83,7 @@ export const dbStore: Store = {
       .select()
     if (error) throw new Error(`createThesis: ${error.message}`)
     const row = (data as ThesisRow[])[0]
+    if (!row) throw new Error('createThesis: insert returned no row')
     return { id: row.id }
   },
 
@@ -110,7 +111,9 @@ export const dbStore: Store = {
       ])
       .select()
     if (error) throw new Error(`createDeal: ${error.message}`)
-    return (data as DealRow[])[0]
+    const row = (data as DealRow[])[0]
+    if (!row) throw new Error('createDeal: insert returned no row')
+    return row
   },
 
   async getDeal(id) {

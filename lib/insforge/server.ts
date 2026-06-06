@@ -1,3 +1,4 @@
+import 'server-only'
 // server-only — uses the admin API key.
 // NEVER import this module in client components or browser bundles.
 // It gives full DB access without RLS restrictions.

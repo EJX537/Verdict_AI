@@ -60,6 +60,8 @@ export async function POST(request: NextRequest) {
         },
         thesis,
         defaultDeps,
+      ).catch((e) =>
+        console.error('[orchestrator] unhandled failure for deal', deal.id, e),
       ),
     )
 
