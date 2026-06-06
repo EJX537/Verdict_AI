@@ -11,7 +11,7 @@ import {
   type ChartData,
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef } from 'react'
 import type { SignalPoint, EvidenceItem } from '@/lib/mock-data'
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Filler)
@@ -32,7 +32,6 @@ const AGENT_NAMES: Record<string, string> = {
 
 const AGENT_IDS = Object.keys(AGENT_COLORS)
 
-// Format a timestamp (ms) as "Jan 06 14:32"
 function formatDate(ms: number): string {
   const d = new Date(ms)
   return d.toLocaleString('en-US', {
@@ -49,25 +48,14 @@ interface SignalGraphProps {
   evidence: EvidenceItem[]
 }
 
-// Investigation "starts" at a fixed offset from now so dates look real
-const INVESTIGATION_START = Date.now() - 24 * 60 * 60 * 1000 // 24h ago
+const INVESTIGATION_START = Date.now() - 24 * 60 * 60 * 1000
 
 export function SignalGraph({ points, evidence }: SignalGraphProps) {
   const chartRef = useRef<ChartJS<'line'> | null>(null)
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
-  const [lockedIndex, setLockedIndex] = useState<number | null>(null)
-  const isLocked = lockedIndex !== null
-  // Ref so the onHover closure always sees the latest isLocked value
-  const isLockedRef = useRef(isLocked)
-  useEffect(() => { isLockedRef.current = isLocked }, [isLocked])
 
-  // The index we're actually displaying — locked takes priority over hover, else latest
-  const activeIndex = lockedIndex ?? hoverIndex ?? (points.length > 0 ? points.length - 1 : null)
-
-  // Build timestamps from t (ms elapsed) + investigation start
   const timestamps = points.map((p) => INVESTIGATION_START + p.t)
 
-  // X labels — cap at 8 visible labels regardless of point count
+  // X labels — cap at 8 visible labels
   const MAX_LABELS = 8
   const LABEL_EVERY = Math.max(1, Math.floor(points.length / MAX_LABELS))
   const labels = points.map((_, i) =>
@@ -94,17 +82,6 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
     maintainAspectRatio: false,
     animation: false,
     interaction: { mode: 'index', intersect: false },
-    onHover: (_event, _elements, chart) => {
-      if (isLockedRef.current) return
-      // Chart.js fires onHover with the active elements — pull the dataIndex
-      // from the first active element, which gives us the x position
-      const active = chart.getActiveElements()
-      if (active.length > 0) {
-        setHoverIndex(active[0].index)
-      } else {
-        setHoverIndex(null)
-      }
-    },
     scales: {
       x: {
         display: true,
@@ -137,47 +114,21 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
     },
     plugins: {
       legend: { display: false },
-      tooltip: { enabled: false }, // disabled — we drive the bottom bar ourselves
+      tooltip: { enabled: false },
     },
   }
 
-  const handleMouseLeave = useCallback(() => {
-    if (!isLocked) setHoverIndex(null)
-  }, [isLocked])
+  // Always show the latest point in the bottom bar
+  const latestPoint = points.length > 0 ? points[points.length - 1] : null
+  const latestTs = timestamps.length > 0 ? timestamps[timestamps.length - 1] : null
 
-  const handleClick = useCallback(() => {
-    if (isLocked) {
-      // Unlock — snap back to latest
-      setLockedIndex(null)
-      setHoverIndex(null)
-    } else {
-      // Lock at current hover position
-      setLockedIndex(hoverIndex)
-    }
-  }, [isLocked, hoverIndex])
-
-  // Draw a crosshair line on the canvas at the active index
-  useEffect(() => {
-    const chart = chartRef.current
-    if (!chart || activeIndex === null) return
-    chart.update('none')
-  }, [activeIndex])
-
-  // Active point values for the bottom bar
-  const activePoint = activeIndex !== null ? points[activeIndex] : null
-  const activeTs = activeIndex !== null ? timestamps[activeIndex] : null
-
-  // For each agent, find the latest EvidenceItem whose timestamp <= activeTs
-  const latestNewsAtCursor: Record<string, EvidenceItem | null> = {}
+  // Latest evidence per agent
+  const latestNews: Record<string, EvidenceItem | null> = {}
   for (const id of AGENT_IDS) {
-    if (activeTs === null) {
-      latestNewsAtCursor[id] = null
-      continue
-    }
     const items = evidence
-      .filter((e) => e.agent === id && e.timestamp <= activeTs)
+      .filter((e) => e.agent === id)
       .sort((a, b) => b.timestamp - a.timestamp)
-    latestNewsAtCursor[id] = items[0] ?? null
+    latestNews[id] = items[0] ?? null
   }
 
   return (
@@ -194,19 +145,10 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
             </span>
           </div>
         ))}
-        {isLocked && (
-          <span className="ml-auto font-mono text-[10px] tracking-widest uppercase text-muted-foreground animate-pulse">
-            Locked — click to release
-          </span>
-        )}
       </div>
 
       {/* Chart area */}
-      <div
-        className="flex-1 relative min-h-0 m-3 mb-0 border border-foreground/5 cursor-crosshair"
-        onMouseLeave={handleMouseLeave}
-        onClick={handleClick}
-      >
+      <div className="flex-1 relative min-h-0 m-3 mb-0 border border-foreground/5">
         {/* Zone bands */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute bottom-0 left-0 right-0 bg-[oklch(0.58_0.14_25)] opacity-[0.04]" style={{ height: '30%' }} />
@@ -226,16 +168,16 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
         )}
       </div>
 
-      {/* Bottom status bar — date + per-agent latest news at cursor */}
-      <div className="flex-shrink-0 border border-foreground/5 bg-foreground/[0.02] m-3 mt-0">
+      {/* Bottom status bar — always shows latest values */}
+      <div className="flex-shrink-0 border border-foreground/5 bg-foreground/[0.02] m-3 mt-2">
         {/* Date + scores row */}
         <div className="flex items-center gap-5 px-4 py-1.5 border-b border-foreground/5">
           <span className="font-mono text-[10px] text-muted-foreground tabular-nums w-36 flex-shrink-0">
-            {activeTs ? formatDate(activeTs) : '—'}
+            {latestTs ? formatDate(latestTs) : '—'}
           </span>
           <div className="flex items-center gap-5">
             {AGENT_IDS.map((id) => {
-              const val = activePoint ? (activePoint as Record<string, number>)[id] : null
+              const val = latestPoint ? (latestPoint as Record<string, number>)[id] : null
               return (
                 <div key={id} className="flex items-center gap-1.5">
                   <span className="font-mono text-[10px] text-muted-foreground uppercase">{AGENT_NAMES[id]}</span>
@@ -250,13 +192,13 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
             })}
           </div>
           <span className="ml-auto font-mono text-[10px] text-muted-foreground tabular-nums">
-            {activeIndex !== null ? `${activeIndex + 1} / ${points.length}` : '—'}
+            {points.length > 0 ? `${points.length} pts` : '—'}
           </span>
         </div>
-        {/* Latest news per agent at cursor */}
+        {/* Latest news per agent */}
         <div className="grid grid-cols-4 divide-x divide-foreground/5">
           {AGENT_IDS.map((id) => {
-            const item = latestNewsAtCursor[id]
+            const item = latestNews[id]
             return (
               <div key={id} className="px-3 py-2 min-w-0">
                 <div className="flex items-center gap-1.5 mb-1">

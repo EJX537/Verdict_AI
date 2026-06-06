@@ -25,25 +25,7 @@ export function InvestigationRoom({
 }: InvestigationRoomProps) {
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
-      <TopBar company={company} status={status} />
-
-      {/* Confirmation banner — slides in when ready, sits between topbar and chart */}
-      {status === 'ready' && (
-        <div className="flex items-center justify-between px-6 py-2.5 border-b border-foreground/20 bg-foreground/5">
-          <div className="flex items-center gap-3">
-            <span className="w-1.5 h-1.5 rounded-full bg-foreground animate-pulse" />
-            <span className="font-mono text-xs tracking-widest uppercase text-foreground">
-              All agents filed — ready to render verdict
-            </span>
-          </div>
-          <button
-            onClick={onConfirmVerdict}
-            className="font-mono text-xs tracking-[0.2em] uppercase bg-foreground text-background px-5 py-1.5 hover:bg-foreground/90 transition-colors"
-          >
-            Render verdict
-          </button>
-        </div>
-      )}
+      <TopBar company={company} status={status} onConfirmVerdict={onConfirmVerdict} />
 
       {/* Body: left (chart + agents) | right (report feed) */}
       <div className="flex-1 flex overflow-hidden min-h-0">
