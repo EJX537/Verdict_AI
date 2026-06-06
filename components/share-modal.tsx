@@ -20,7 +20,7 @@ const ZONE_COLOR: Record<VerdictData['zone'], string> = {
 }
 
 const W = 600
-const H = 340
+const H = 380
 
 function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
   company: string
@@ -85,22 +85,24 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
       {/* Divider */}
       <line x1={40} y1={158} x2={W - 40} y2={158} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
 
-      {/* Agent score bars */}
+      {/* Agent score rows — name on left, bar in middle, score on right */}
       {agents.map((a, i) => {
         const cfg = AGENTS.find(ag => ag.id === a.id)
-        const bx = 40 + i * (barW + 16)
-        const fillW = (a.score / 10) * barW
+        const rowY = 172 + i * 18
+        const trackX = 130
+        const trackW = W - 40 - trackX - 48
+        const fillW = (a.score / 10) * trackW
         return (
           <g key={a.id}>
-            <text x={bx} y={178} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.35)" letterSpacing={1}>
+            <text x={40} y={rowY} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.45)" letterSpacing={1} dominantBaseline="middle">
               {(cfg?.name ?? a.id).toUpperCase()}
             </text>
             {/* Track */}
-            <rect x={bx} y={184} width={barW} height={barH} rx={1} fill="rgba(255,255,255,0.08)" />
+            <rect x={trackX} y={rowY - 2} width={trackW} height={4} rx={1} fill="rgba(255,255,255,0.08)" dominantBaseline="middle" />
             {/* Fill */}
-            <rect x={bx} y={184} width={fillW} height={barH} rx={1} fill={cfg?.chartColor ?? '#fff'} />
-            {/* Score value */}
-            <text x={bx + barW + 4} y={188} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.5)">
+            <rect x={trackX} y={rowY - 2} width={fillW} height={4} rx={1} fill={cfg?.chartColor ?? '#fff'} />
+            {/* Score value right-aligned */}
+            <text x={W - 40} y={rowY} fontFamily="ui-monospace, monospace" fontSize={9} fill="rgba(255,255,255,0.6)" textAnchor="end" dominantBaseline="middle">
               {a.score.toFixed(1)}
             </text>
           </g>
@@ -108,50 +110,50 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
       })}
 
       {/* Divider */}
-      <line x1={40} y1={202} x2={W - 40} y2={202} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
+      <line x1={40} y1={248} x2={W - 40} y2={248} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
 
       {/* Pattern match columns */}
-      <text x={40} y={220} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.35)" letterSpacing={2}>
+      <text x={40} y={266} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.35)" letterSpacing={2}>
         CLOSEST DEAD
       </text>
-      <text x={40} y={234} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={13} fontWeight={600} fill="#ffffff">
+      <text x={40} y={282} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={13} fontWeight={600} fill="#ffffff">
         {verdict.closestDead.name}
       </text>
-      <text x={40} y={248} fontFamily="ui-monospace, monospace" fontSize={9} fill="rgba(255,255,255,0.4)">
+      <text x={40} y={296} fontFamily="ui-monospace, monospace" fontSize={9} fill="rgba(255,255,255,0.4)">
         {verdict.closestDead.match}% match
       </text>
 
-      <text x={220} y={220} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.35)" letterSpacing={2}>
+      <text x={220} y={266} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.35)" letterSpacing={2}>
         CLOSEST LIVING
       </text>
-      <text x={220} y={234} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={13} fontWeight={600} fill="#ffffff">
+      <text x={220} y={282} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={13} fontWeight={600} fill="#ffffff">
         {verdict.closestAlive.name}
       </text>
-      <text x={220} y={248} fontFamily="ui-monospace, monospace" fontSize={9} fill="rgba(255,255,255,0.4)">
+      <text x={220} y={296} fontFamily="ui-monospace, monospace" fontSize={9} fill="rgba(255,255,255,0.4)">
         {verdict.closestAlive.match}% match
       </text>
 
       {/* Divider */}
-      <line x1={40} y1={262} x2={W - 40} y2={262} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
+      <line x1={40} y1={312} x2={W - 40} y2={312} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
 
       {/* Provocative agent header */}
-      <rect x={40} y={272} width={16} height={1} fill={provocativeConfig?.chartColor ?? '#fff'} />
-      <text x={62} y={273} fontFamily="ui-monospace, monospace" fontSize={8} fill={provocativeConfig?.chartColor ?? '#fff'} letterSpacing={2} dominantBaseline="middle">
+      <rect x={40} y={326} width={16} height={1} fill={provocativeConfig?.chartColor ?? '#fff'} />
+      <text x={62} y={326} fontFamily="ui-monospace, monospace" fontSize={8} fill={provocativeConfig?.chartColor ?? '#fff'} letterSpacing={2} dominantBaseline="middle">
         {(provocativeConfig?.name ?? provocativeAgent.id).toUpperCase()}
       </text>
-      <text x={W - 40} y={273} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.4)" textAnchor="end" dominantBaseline="middle">
+      <text x={W - 40} y={326} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.4)" textAnchor="end" dominantBaseline="middle">
         {provocativeAgent.score}/10
       </text>
 
       {/* Agent summary lines */}
       {summaryLines.slice(0, 2).map((line, i) => (
-        <text key={i} x={40} y={290 + i * 16} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={11} fill="rgba(255,255,255,0.7)">
+        <text key={i} x={40} y={344 + i * 16} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={11} fill="rgba(255,255,255,0.75)">
           {line}
         </text>
       ))}
 
       {/* Watermark */}
-      <text x={W - 40} y={H - 16} fontFamily="ui-monospace, monospace" fontSize={9} fill="rgba(255,255,255,0.2)" textAnchor="end" letterSpacing={2}>
+      <text x={W - 40} y={H - 12} fontFamily="ui-monospace, monospace" fontSize={10} fill="rgba(255,255,255,0.7)" textAnchor="end" letterSpacing={3} fontWeight={600}>
         THE VERDICT
       </text>
     </svg>
