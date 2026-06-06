@@ -8,6 +8,11 @@ import { buildArchivistInput } from '../lib/verdict/adapters/archivist'
 const COMPANY = process.argv[2] ?? 'Notion'
 const ONLY = process.argv[3] // optional: run only this fixture name
 
+// Crunchbase slugs don't always match a plain company name — override per company
+// by passing a full URL or the correct slug as CRUNCHBASE_COMPANY env var.
+// e.g.  CRUNCHBASE_COMPANY=notion-so  pnpm dlx tsx scripts/capture-fixtures.ts Notion crunchbase
+const CRUNCHBASE_COMPANY = process.env.CRUNCHBASE_COMPANY ?? COMPANY
+
 const DIR = 'lib/verdict/fixtures'
 mkdirSync(DIR, { recursive: true })
 
@@ -24,7 +29,7 @@ async function capture(name: string, actorId: string, input: Record<string, unkn
 }
 
 async function main() {
-  await capture('crunchbase', 'davidsharadbhatt/crunchbase-company-scraper', buildMoneyInput(COMPANY) as unknown as Record<string, unknown>)
+  await capture('crunchbase', 'davidsharadbhatt/crunchbase-company-scraper---no-api-limits', buildMoneyInput(CRUNCHBASE_COMPANY) as unknown as Record<string, unknown>)
   await capture('linkedin', 'harvestapi/linkedin-company-employees', buildPeopleInput(COMPANY) as unknown as Record<string, unknown>)
   await capture('googlenews', 'data_xplorer/google-news-scraper-fast', buildNewsInput(COMPANY) as unknown as Record<string, unknown>)
   await capture('prnewswire', 'parseforge/pr-newswire-scraper', buildPrNewswireInput(COMPANY) as unknown as Record<string, unknown>)

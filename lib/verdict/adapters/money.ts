@@ -20,13 +20,9 @@ export interface CrunchbaseCompany {
 }
 
 export interface MoneyActorInput {
-  maxCompanies: number
-  operatingStatus: string
-  companyType: string
-  industry: string[]
-  numberOfEmployees: string[]
-  funding_type: string[]
-  headquartersLocation: string
+  // davidsharadbhatt/crunchbase-company-scraper---no-api-limits accepts a
+  // newline-separated string of Crunchbase organization URLs.
+  urlList: string
 }
 
 // Third-party scrape, can lag reality, ToS-gray → low provenance (spec: medium-low).
@@ -67,20 +63,22 @@ function topTierCount(round: CrunchbaseRound): number {
   }).length
 }
 
-export function buildMoneyInput(_company: string): MoneyActorInput {
-  // davidsharadbhatt/crunchbase-company-scraper is a bulk filter scraper;
-  // it has no single-company name search field. We request a small sample
-  // (minimum allowed is 1000) with no additional filters so the fixture
-  // captures the real output shape regardless of which companies are returned.
-  return {
-    maxCompanies: 1000,
-    operatingStatus: 'Active',
-    companyType: 'For Profit',
-    industry: [],
-    numberOfEmployees: [],
-    funding_type: [],
-    headquartersLocation: '',
-  }
+export function buildMoneyInput(company: string): MoneyActorInput {
+  // davidsharadbhatt/crunchbase-company-scraper---no-api-limits accepts a
+  // newline-separated string of Crunchbase organization URLs (field: urlList).
+  //
+  // `company` may be:
+  //   • A full Crunchbase URL  → used as-is
+  //     e.g. "https://www.crunchbase.com/organization/notion-so"
+  //   • A bare org slug        → prefixed with the Crunchbase base URL
+  //     e.g. "notion-so"
+  //   • A plain company name   → lower-cased + spaces → hyphens (best-effort slug)
+  //     e.g. "Notion" → "notion"  WARNING: this may resolve to the wrong org;
+  //     always prefer passing the canonical slug or full URL when it is known.
+  const url = company.startsWith('https://')
+    ? company
+    : `https://www.crunchbase.com/organization/${company.toLowerCase().replace(/\s+/g, '-')}`
+  return { urlList: url }
 }
 
 export function mapMoneyDataset(
