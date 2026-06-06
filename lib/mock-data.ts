@@ -85,7 +85,7 @@ export interface VerdictData {
   closestAlive: { name: string; match: number; what: string }
   fork: string
   counterfactual: string
-  timeline: { t: number; label: string; critical?: boolean }[]
+  timeline: { t: number; label: string; score: number; critical?: boolean }[]
 }
 
 export function getZone(score: number): VerdictData['zone'] {
@@ -260,19 +260,36 @@ export function generateMockInvestigation(company: string) {
     counterfactual: finalScore < 50
       ? `If the CTO had been retained — or replaced within 60 days — the engineering exodus likely does not happen, the product pivot is executed cleanly, and the runway extends by 18+ months. The single highest-leverage intervention was a $600K retention package that was never offered.`
       : `Resolving the ICP ambiguity — specifically committing to either enterprise or SMB, not both — would likely push this score into the Thriving band. The cost of indecision is estimated at 40% of available market capture.`,
-    timeline: [
-      { t: 0, label: 'Founded' },
-      { t: 18, label: 'Seed round closes' },
-      { t: 30, label: 'Series A — $22M' },
-      { t: 42, label: 'Product launch' },
-      { t: 50, label: 'Series B — $75M', critical: finalScore < 50 },
-      { t: 56, label: 'CTO departure', critical: true },
-      { t: 62, label: 'FTC inquiry opened', critical: finalScore < 60 },
-      { t: 68, label: 'Engineering exodus', critical: finalScore < 50 },
-      { t: 72, label: 'Product pivot announced' },
-      { t: 78, label: 'Glassdoor collapse', critical: finalScore < 55 },
-      { t: 84, label: 'Now' },
-    ],
+    timeline: (() => {
+      const rawEvents = [
+        { t: 0,  label: 'Founded',                critical: false },
+        { t: 18, label: 'Seed round closes',       critical: false },
+        { t: 30, label: 'Series A — $22M',         critical: false },
+        { t: 42, label: 'Product launch',          critical: false },
+        { t: 50, label: 'Series B — $75M',         critical: finalScore < 50 },
+        { t: 56, label: 'CTO departure',           critical: true },
+        { t: 62, label: 'FTC inquiry opened',      critical: finalScore < 60 },
+        { t: 68, label: 'Engineering exodus',      critical: finalScore < 50 },
+        { t: 72, label: 'Product pivot announced', critical: false },
+        { t: 78, label: 'Glassdoor collapse',      critical: finalScore < 55 },
+        { t: 84, label: 'Now',                     critical: false },
+      ]
+      const maxT = rawEvents[rawEvents.length - 1].t
+      // Interpolate health score per event: start at 72 (healthy birth),
+      // arc toward finalScore. Critical events drag score down by 15–25 pts.
+      let running = 72
+      return rawEvents.map(({ t, label, critical }) => {
+        const progress = t / maxT
+        // Linear interpolation target at this time point
+        const target = 72 + (finalScore - 72) * progress
+        // Snap running score toward target
+        running = running * 0.55 + target * 0.45
+        // Critical events inflict a sharp penalty
+        if (critical) running = Math.max(5, running - rand(15, 25, t))
+        const score = Math.round(Math.max(3, Math.min(100, running)))
+        return { t, label, score, ...(critical ? { critical: true } : {}) }
+      })
+    })(),
   }
 
   return { events, verdict, finalScore }

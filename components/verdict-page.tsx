@@ -50,8 +50,16 @@ const DANGER_HEX = '#c0392b'
 
 /**
  * For N events, compute each node's (x, y) on the canvas.
- * The path flows LEFT → RIGHT. Each node's x increases evenly.
- * y oscillates above/below the horizontal midline (the wave).
+ * x increases evenly left → right.
+ * y is driven by each event's health score, log-scaled so drops at the low end
+ * are amplified and improvements at the high end compress visually.
+ *
+ * Log mapping:
+ *   normalised = log(score + 1) / log(101)   → [0, 1]
+ *   y = topPad + (1 - normalised) * usableH  → high score = near top, low = near bottom
+ *
+ * side ('above' | 'below') is derived from whether this event's score is
+ * above or below the midpoint score of the full timeline.
  */
 function computeNodes(
   events: VerdictData['timeline'],
@@ -61,16 +69,26 @@ function computeNodes(
   const n = events.length
   const padL = 60
   const padR = 60
+  const padT = 32
+  const padB = 32
   const usableW = cw - padL - padR
-  const cy = ch / 2
-  // Amplitude: how far above/below midline the node sits
-  const amp = Math.min(cy * 0.5, 80)
+  const usableH = ch - padT - padB
 
-  return events.map((_, i) => {
+  // Median score across all events — used to decide card side
+  const sorted = [...events].map(e => e.score).sort((a, b) => a - b)
+  const median = sorted[Math.floor(n / 2)]
+
+  return events.map((ev, i) => {
     const x = padL + (i / (n - 1)) * usableW
-    const side: 'above' | 'below' = i % 2 === 0 ? 'above' : 'below'
-    const signedOffset = i % 2 === 0 ? -amp : amp
-    return { x, y: cy + signedOffset, side }
+
+    // Log scale: score ∈ [1,100] → [0,1], top of canvas = high health
+    const logNorm = Math.log(ev.score + 1) / Math.log(101)
+    const y = padT + (1 - logNorm) * usableH
+
+    // Card floats above if score is above median, below if at or under median
+    const side: 'above' | 'below' = ev.score > median ? 'above' : 'below'
+
+    return { x, y, side }
   })
 }
 
@@ -344,11 +362,8 @@ function FlowingTimeline({ events, zone, score }: FlowingTimelineProps) {
     ? computeNodes(events, dims.w, dims.h)
     : []
 
-  // Card height: fits in the space above/below the node tick
-  const amp = dims.h > 0 ? Math.min(dims.h / 2 * 0.5, 80) : 80
-  const nodeR = 10
-  const tickLen = 24
-  const cardHeight = Math.max(44, amp - nodeR - tickLen - 8)
+  // Card height is fixed — the canvas height provides the spatial budget
+  const cardHeight = 44
 
   return (
     <div ref={containerRef} className="relative w-full h-full">
