@@ -1,116 +1,122 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { AGENTS } from '@/lib/mock-data'
-import type { AgentId, AgentState } from '@/lib/mock-data'
+import type { AgentState, EvidenceItem } from '@/lib/mock-data'
 
-interface AgentTileProps {
-  agent: AgentState
+const AGENT_CHART_COLORS: Record<string, string> = {
+  archivist:      '#5b9cf6',
+  money_tracker:  '#f5a623',
+  people_watcher: '#e879a0',
+  press_room:     '#4ade80',
 }
 
-function AgentTile({ agent }: AgentTileProps) {
+interface AgentCardProps {
+  agent: AgentState
+  latestFinding: EvidenceItem | null
+}
+
+function AgentCard({ agent, latestFinding }: AgentCardProps) {
   const config = AGENTS.find((a) => a.id === agent.id)!
+  const color = AGENT_CHART_COLORS[agent.id]
+  const [flash, setFlash] = useState(false)
+  const [displayedFinding, setDisplayedFinding] = useState<EvidenceItem | null>(null)
+
+  // Flash the card and update finding whenever a new one arrives
+  useEffect(() => {
+    if (!latestFinding) return
+    setFlash(true)
+    setDisplayedFinding(latestFinding)
+    const t = setTimeout(() => setFlash(false), 600)
+    return () => clearTimeout(t)
+  }, [latestFinding?.id])
+
+  const isActive = agent.active && !agent.complete
 
   return (
     <div
-      className={`relative border ${config.borderClass} bg-card p-4 flex flex-col gap-3 overflow-hidden transition-all duration-300 ${
-        agent.active && !agent.complete ? 'border-opacity-60' : 'border-opacity-20'
-      }`}
+      className="relative border border-border bg-card flex flex-col gap-2 p-3 overflow-hidden transition-colors duration-150"
+      style={{
+        borderTopColor: color,
+        borderTopWidth: 2,
+        backgroundColor: flash ? `${color}0d` : undefined,
+      }}
     >
-      {/* Header row */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            {agent.active && !agent.complete && (
-              <span className={`w-1.5 h-1.5 rounded-full agent-pulse`} style={{ backgroundColor: `var(--agent-${agent.id.replace('_', '-')})` }} />
-            )}
-            {agent.complete && (
-              <span className="w-1.5 h-1.5 rounded-full bg-foreground/50" />
-            )}
-            {!agent.active && !agent.complete && (
-              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
-            )}
-            <span className={`font-mono text-[10px] tracking-[0.2em] uppercase ${config.colorClass}`}>
-              {config.name}
-            </span>
-          </div>
+      {/* Header: name + pulse + score */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          {isActive && (
+            <span
+              className="w-1.5 h-1.5 rounded-full agent-pulse flex-shrink-0"
+              style={{ backgroundColor: color }}
+            />
+          )}
+          {agent.complete && (
+            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color, opacity: 0.5 }} />
+          )}
+          {!agent.active && !agent.complete && (
+            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 flex-shrink-0" />
+          )}
+          <span
+            className="font-mono text-[10px] tracking-[0.15em] uppercase font-medium"
+            style={{ color }}
+          >
+            {config.name}
+          </span>
         </div>
 
-        {/* Signal count */}
-        <div className="text-right">
-          <span className="font-mono text-lg font-medium text-foreground tabular-nums">
-            {agent.signalCount}
+        {/* Score: shows live signal count while running, final score when done */}
+        <div className="flex items-baseline gap-1">
+          <span className="font-mono text-lg font-semibold tabular-nums leading-none text-foreground">
+            {agent.complete && agent.score !== null
+              ? agent.score
+              : agent.signalCount}
           </span>
-          <span className="font-mono text-[9px] text-muted-foreground ml-1 uppercase tracking-wide">
-            signals
+          <span className="font-mono text-[9px] text-muted-foreground">
+            {agent.complete ? '/10' : 'sig'}
           </span>
         </div>
       </div>
 
-      {/* Current task */}
-      <div className={`font-sans text-xs leading-relaxed transition-colors duration-300 ${
-        agent.complete
-          ? 'text-muted-foreground line-through'
-          : agent.active
-          ? 'text-foreground'
-          : 'text-muted-foreground'
-      }`}>
-        {agent.complete
-          ? 'Complete'
-          : agent.active
-          ? agent.task
-          : 'Queued'}
-      </div>
-
-      {/* Browser stream mock */}
-      <div className={`h-20 border ${config.borderClass} border-opacity-20 bg-muted/30 flex items-center justify-center overflow-hidden relative`}>
-        {agent.active && !agent.complete ? (
-          <div className="w-full h-full flex flex-col gap-1 p-2 opacity-50">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-1.5 bg-foreground/10 rounded-sm"
-                style={{
-                  width: `${55 + ((i * 17 + agent.signalCount * 3) % 40)}%`,
-                  opacity: 0.4 + (i * 0.15),
-                }}
-              />
-            ))}
-            <div className="mt-1 flex gap-1">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-1.5 w-8 bg-foreground/10 rounded-sm" />
-              ))}
-            </div>
-          </div>
-        ) : agent.complete ? (
-          <span className={`font-mono text-xs ${config.colorClass}`}>
-            Score filed
-          </span>
+      {/* Flashing finding or task */}
+      <div className="min-h-[2.5rem]">
+        {displayedFinding ? (
+          <p
+            className="font-sans text-[11px] leading-snug text-foreground/80 line-clamp-2"
+            style={{ color: flash ? color : undefined, transition: 'color 0.3s' }}
+          >
+            {displayedFinding.finding}
+          </p>
         ) : (
-          <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
-            Standby
-          </span>
+          <p className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider">
+            {isActive ? agent.task : agent.complete ? 'Complete' : 'Standby'}
+          </p>
         )}
       </div>
-
-      {/* Completed score badge */}
-      {agent.complete && agent.score !== null && (
-        <div className={`absolute bottom-3 right-3 font-mono text-xs ${config.colorClass}`}>
-          {agent.score}/10
-        </div>
-      )}
     </div>
   )
 }
 
 interface AgentGridProps {
   agents: AgentState[]
+  evidence: EvidenceItem[]
 }
 
-export function AgentGrid({ agents }: AgentGridProps) {
+export function AgentGrid({ agents, evidence }: AgentGridProps) {
+  // For each agent, find the most recent evidence item
+  const latestByAgent = (id: string): EvidenceItem | null => {
+    const items = evidence.filter((e) => e.agent === id)
+    return items.length > 0 ? items[items.length - 1] : null
+  }
+
   return (
-    <div className="grid grid-cols-2 gap-px bg-border flex-1 min-h-0">
+    <div className="grid grid-cols-2 gap-px bg-border flex-shrink-0">
       {agents.map((agent) => (
-        <AgentTile key={agent.id} agent={agent} />
+        <AgentCard
+          key={agent.id}
+          agent={agent}
+          latestFinding={latestByAgent(agent.id)}
+        />
       ))}
     </div>
   )

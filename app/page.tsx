@@ -26,21 +26,13 @@ const INITIAL_AGENT_STATES: AgentState[] = AGENTS.map((a) => ({
   pulseKey: 0,
 }))
 
-const INITIAL_SIGNAL_POINT: SignalPoint = {
-  t: 0,
-  archivist: 5,
-  money_tracker: 5,
-  people_watcher: 5,
-  press_room: 5,
-}
-
 export default function App() {
   const [view, setView] = useState<AppView>('entry')
   const [company, setCompany] = useState('')
-  const [status, setStatus] = useState<'investigating' | 'filing' | 'complete'>('investigating')
+  const [status, setStatus] = useState<'investigating' | 'filing' | 'complete' | 'ready'>('investigating')
   const [agents, setAgents] = useState<AgentState[]>(INITIAL_AGENT_STATES)
   const [evidence, setEvidence] = useState<EvidenceItem[]>([])
-  const [signalPoints, setSignalPoints] = useState<SignalPoint[]>([INITIAL_SIGNAL_POINT])
+  const [signalPoints, setSignalPoints] = useState<SignalPoint[]>([])
   const [verdict, setVerdict] = useState<VerdictData | null>(null)
 
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -72,7 +64,7 @@ export default function App() {
       setVerdict(null)
       agentScoresRef.current = { archivist: 5, money_tracker: 5, people_watcher: 5, press_room: 5 }
       pointCountRef.current = 0
-      setSignalPoints([INITIAL_SIGNAL_POINT])
+      setSignalPoints([])
       setView('investigation')
 
       const { events, verdict: verdictData } = generateMockInvestigation(companyName)
@@ -145,14 +137,9 @@ export default function App() {
               )
             )
           } else if (event.type === 'verdict_ready') {
-            setStatus('filing')
-            const filingTid = setTimeout(() => {
-              clearAll()
-              setVerdict(verdictData)
-              setStatus('complete')
-              setView('verdict')
-            }, 1800)
-            timeoutsRef.current.push(filingTid)
+            clearAll()
+            setVerdict(verdictData)
+            setStatus('ready')
           }
         }, event.delay)
         timeoutsRef.current.push(tid)
@@ -161,6 +148,11 @@ export default function App() {
     [clearAll]
   )
 
+  const handleConfirmVerdict = useCallback(() => {
+    setStatus('complete')
+    setView('verdict')
+  }, [])
+
   const handleReset = useCallback(() => {
     clearAll()
     setView('entry')
@@ -168,7 +160,7 @@ export default function App() {
     setVerdict(null)
     setAgents(INITIAL_AGENT_STATES)
     setEvidence([])
-    setSignalPoints([INITIAL_SIGNAL_POINT])
+    setSignalPoints([])
   }, [clearAll])
 
   // Clean up on unmount
@@ -186,6 +178,7 @@ export default function App() {
         agents={agents}
         evidence={evidence}
         signalPoints={signalPoints}
+        onConfirmVerdict={handleConfirmVerdict}
       />
     )
   }
