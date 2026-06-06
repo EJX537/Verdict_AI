@@ -74,7 +74,7 @@ export function SignalGraph({ points }: SignalGraphProps) {
         },
         border: { display: false },
         ticks: {
-          color: 'oklch(0.35 0 0)',
+          color: 'oklch(0.55 0 0)',
           font: { family: 'var(--font-ibm-plex-mono)', size: 9 },
           maxTicksLimit: 5,
           padding: 8,
@@ -104,13 +104,13 @@ export function SignalGraph({ points }: SignalGraphProps) {
     <div className="border-t border-border bg-background px-6 py-3">
       {/* Legend */}
       <div className="flex items-center gap-5 mb-3">
-        <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-muted-foreground/40 mr-2">
+        <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-muted-foreground mr-2">
           Signal
         </span>
         {(Object.entries(AGENT_NAMES) as [keyof typeof AGENT_NAMES, string][]).map(([id, name]) => (
           <div key={id} className="flex items-center gap-1.5">
             <div className="w-3 h-px" style={{ backgroundColor: AGENT_COLORS[id] }} />
-            <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground/50">
+            <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground/70">
               {name}
             </span>
           </div>
@@ -126,7 +126,7 @@ export function SignalGraph({ points }: SignalGraphProps) {
           ].map((z) => (
             <div key={z.label} className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-sm opacity-50" style={{ backgroundColor: z.color }} />
-              <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground/40">
+              <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground/70">
                 {z.label}
               </span>
             </div>

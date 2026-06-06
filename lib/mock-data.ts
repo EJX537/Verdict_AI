@@ -97,12 +97,12 @@ export function getZone(score: number): VerdictData['zone'] {
 }
 
 export function getScoreTint(score: number): string {
-  // Cool grey (low) → neutral (mid) → warm off-white (high)
-  if (score < 30) return 'oklch(0.12 0.02 260)'
-  if (score < 50) return 'oklch(0.12 0.015 30)'
-  if (score < 65) return 'oklch(0.12 0.005 60)'
-  if (score < 80) return 'oklch(0.13 0 0)'
-  return 'oklch(0.14 0.01 90)'
+  // Cool blue-grey (low) → neutral dark (mid) → warm dark (high)
+  if (score < 30) return 'oklch(0.16 0.025 260)'
+  if (score < 50) return 'oklch(0.16 0.02 30)'
+  if (score < 65) return 'oklch(0.15 0.008 60)'
+  if (score < 80) return 'oklch(0.15 0 0)'
+  return 'oklch(0.16 0.012 90)'
 }
 
 export const RECENT_CASES = [

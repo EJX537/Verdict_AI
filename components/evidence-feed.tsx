@@ -12,10 +12,10 @@ export function EvidenceFeed({ items }: EvidenceFeedProps) {
     <div className="flex flex-col h-full overflow-hidden border-l border-border">
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between flex-shrink-0">
-        <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground/50">
+        <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground">
           Evidence Feed
         </span>
-        <span className="font-mono text-xs text-muted-foreground/40 tabular-nums">
+        <span className="font-mono text-xs text-muted-foreground tabular-nums">
           {items.length}
         </span>
       </div>
@@ -61,19 +61,19 @@ export function EvidenceFeed({ items }: EvidenceFeedProps) {
                           {item.delta > 0 ? '+' : ''}{item.delta}
                         </span>
                         {isHigh && (
-                          <span className="font-mono text-[9px] uppercase tracking-wider text-foreground/30">
+                          <span className="font-mono text-[9px] uppercase tracking-wider text-foreground/50">
                             confirmed
                           </span>
                         )}
                       </div>
-                      <p className={`font-sans text-xs leading-relaxed ${isHigh ? 'text-foreground/75' : 'text-foreground/50'}`}>
+                      <p className={`font-sans text-xs leading-relaxed ${isHigh ? 'text-foreground/85' : 'text-foreground/65'}`}>
                         {item.finding}
                       </p>
                       <a
                         href={item.source}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-mono text-[10px] text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors truncate block mt-0.5"
+                        className="font-mono text-[10px] text-muted-foreground/70 hover:text-muted-foreground transition-colors truncate block mt-0.5"
                         title={item.source}
                       >
                         {new URL(item.source).hostname}

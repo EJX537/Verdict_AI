@@ -30,11 +30,11 @@ function ScoreBlock({ score, zone }: ScoreBlockProps) {
   const tint = getScoreTint(score)
 
   const zoneColors: Record<VerdictData['zone'], string> = {
-    Terminal: 'text-[oklch(0.58_0.14_25)]',
-    Critical: 'text-[oklch(0.68_0.14_30)]',
-    Guarded: 'text-[oklch(0.72_0.12_55)]',
-    Stable: 'text-[oklch(0.78_0.09_150)]',
-    Thriving: 'text-[oklch(0.82_0.06_200)]',
+    Terminal: 'text-[oklch(0.65_0.14_25)]',
+    Critical: 'text-[oklch(0.72_0.14_30)]',
+    Guarded: 'text-[oklch(0.78_0.12_55)]',
+    Stable: 'text-[oklch(0.82_0.09_150)]',
+    Thriving: 'text-[oklch(0.86_0.06_200)]',
   }
 
   return (
@@ -42,11 +42,11 @@ function ScoreBlock({ score, zone }: ScoreBlockProps) {
       className="text-center py-16 transition-all duration-1000"
       style={{ backgroundColor: tint }}
     >
-      <p className="font-mono text-xs tracking-[0.3em] uppercase text-muted-foreground/50 mb-6">
+      <p className="font-mono text-xs tracking-[0.3em] uppercase text-muted-foreground mb-6">
         Verdict
       </p>
       <div className="score-reveal">
-        <span className="font-sans text-[9rem] font-light text-white leading-none tabular-nums">
+        <span className="font-sans text-[9rem] font-light text-foreground leading-none tabular-nums">
           {displayed}
         </span>
       </div>
@@ -76,10 +76,10 @@ function SignalCards({ agents }: SignalCardsProps) {
                 {a.score}/10
               </span>
             </div>
-            <p className="font-sans text-xs leading-relaxed text-foreground/65 mb-3">
+            <p className="font-sans text-xs leading-relaxed text-foreground/80 mb-3">
               {a.summary}
             </p>
-            <span className="font-mono text-[10px] text-muted-foreground/40">
+            <span className="font-mono text-[10px] text-muted-foreground">
               {a.sourceCount} sources
             </span>
           </div>
@@ -98,36 +98,36 @@ interface PatternMatchProps {
 function PatternMatch({ closestDead, closestAlive, fork }: PatternMatchProps) {
   return (
     <div className="border border-border p-6">
-      <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground/50 mb-5">
+      <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground mb-5">
         Pattern Match
       </p>
       <div className="grid grid-cols-2 gap-4 mb-5">
-        <div className="border border-[oklch(0.58_0.14_25/0.25)] bg-[oklch(0.58_0.14_25/0.04)] p-4">
-          <p className="font-mono text-[10px] uppercase tracking-wide text-[oklch(0.58_0.14_25)] mb-2">
+        <div className="border border-[oklch(0.65_0.14_25/0.4)] bg-[oklch(0.65_0.14_25/0.06)] p-4">
+          <p className="font-mono text-[10px] uppercase tracking-wide text-[oklch(0.65_0.14_25)] mb-2">
             Closest Dead
           </p>
-          <p className="font-sans text-sm font-medium text-foreground/80 mb-1">{closestDead.name}</p>
-          <p className="font-mono text-xs text-muted-foreground/50 mb-2">
+          <p className="font-sans text-sm font-medium text-foreground mb-1">{closestDead.name}</p>
+          <p className="font-mono text-xs text-muted-foreground mb-2">
             {closestDead.match}% match
           </p>
-          <p className="font-sans text-xs text-muted-foreground/60 leading-relaxed">
+          <p className="font-sans text-xs text-foreground/70 leading-relaxed">
             Cause: {closestDead.cause}
           </p>
         </div>
-        <div className="border border-[oklch(0.78_0.09_150/0.25)] bg-[oklch(0.78_0.09_150/0.04)] p-4">
-          <p className="font-mono text-[10px] uppercase tracking-wide text-[oklch(0.78_0.09_150)] mb-2">
+        <div className="border border-[oklch(0.82_0.09_150/0.4)] bg-[oklch(0.82_0.09_150/0.06)] p-4">
+          <p className="font-mono text-[10px] uppercase tracking-wide text-[oklch(0.82_0.09_150)] mb-2">
             Closest Living
           </p>
-          <p className="font-sans text-sm font-medium text-foreground/80 mb-1">{closestAlive.name}</p>
-          <p className="font-mono text-xs text-muted-foreground/50 mb-2">
+          <p className="font-sans text-sm font-medium text-foreground mb-1">{closestAlive.name}</p>
+          <p className="font-mono text-xs text-muted-foreground mb-2">
             {closestAlive.match}% match
           </p>
-          <p className="font-sans text-xs text-muted-foreground/60 leading-relaxed">
+          <p className="font-sans text-xs text-foreground/70 leading-relaxed">
             Saved by: {closestAlive.what}
           </p>
         </div>
       </div>
-      <p className="font-sans text-sm text-foreground/60 leading-relaxed border-t border-border pt-4">
+      <p className="font-sans text-sm text-foreground/75 leading-relaxed border-t border-border pt-4">
         {fork}
       </p>
     </div>
@@ -141,10 +141,10 @@ interface CounterfactualProps {
 function Counterfactual({ text }: CounterfactualProps) {
   return (
     <div className="border border-border p-6">
-      <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground/50 mb-4">
+      <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground mb-4">
         Counterfactual
       </p>
-      <p className="font-sans text-sm leading-relaxed text-foreground/65">
+      <p className="font-sans text-sm leading-relaxed text-foreground/80">
         {text}
       </p>
     </div>
@@ -163,10 +163,10 @@ function TimelineScrubber({ events }: TimelineScrubberProps) {
   return (
     <div className="border border-border p-6">
       <div className="flex items-center justify-between mb-5">
-        <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground/50">
+        <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground">
           Timeline
         </p>
-        <span className="font-mono text-[10px] text-muted-foreground/40">
+        <span className="font-mono text-[10px] text-muted-foreground/70">
           Month {Math.round(visibleUpTo)}
         </span>
       </div>
@@ -180,22 +180,22 @@ function TimelineScrubber({ events }: TimelineScrubberProps) {
           return (
             <div
               key={ev.t}
-              className={`absolute top-0 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${visible ? 'opacity-100' : 'opacity-20'}`}
+              className={`absolute top-0 -translate-x-1/2 -translate-y-1/2 transition-all duration-300 ${visible ? 'opacity-100' : 'opacity-25'}`}
               style={{ left: `${pct}%` }}
             >
               <div
-                className={`w-2 h-2 rounded-full border ${ev.critical ? 'border-[oklch(0.58_0.14_25)] bg-[oklch(0.58_0.14_25/0.5)]' : 'border-foreground/30 bg-background'}`}
+                className={`w-2 h-2 rounded-full border ${ev.critical ? 'border-[oklch(0.65_0.14_25)] bg-[oklch(0.65_0.14_25/0.5)]' : 'border-foreground/40 bg-background'}`}
               />
               <div
                 className={`absolute top-3 -translate-x-1/2 whitespace-nowrap font-mono text-[9px] ${
-                  ev.critical ? 'text-[oklch(0.58_0.14_25)]' : 'text-muted-foreground/40'
+                  ev.critical ? 'text-[oklch(0.65_0.14_25)]' : 'text-muted-foreground/70'
                 }`}
                 style={{ left: '50%' }}
               >
                 {ev.label}
               </div>
               {ev.label === 'Now' && (
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 h-4 w-px bg-foreground/30" />
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 h-4 w-px bg-foreground/40" />
               )}
             </div>
           )
@@ -213,7 +213,7 @@ function TimelineScrubber({ events }: TimelineScrubberProps) {
           className="w-full accent-foreground h-px bg-border appearance-none cursor-pointer"
           style={{
             WebkitAppearance: 'none',
-            background: `linear-gradient(to right, oklch(0.45 0 0) ${scrubValue}%, oklch(0.22 0 0) ${scrubValue}%)`,
+            background: `linear-gradient(to right, oklch(0.55 0 0) ${scrubValue}%, oklch(0.22 0 0) ${scrubValue}%)`,
           }}
         />
       </div>
@@ -239,7 +239,6 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
   const handleShare = () => {
     setShared(true)
     setTimeout(() => setShared(false), 2000)
-    // In a real app, generate and copy a share URL
     navigator.clipboard?.writeText(`${company} scored ${score}/100 — ${zone}. Investigated by The Verdict.`)
   }
 
@@ -262,7 +261,7 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
                 value={challengeText}
                 onChange={(e) => setChallengeText(e.target.value)}
                 placeholder="What signal did we miss?"
-                className="flex-1 bg-muted border border-border px-3 py-1.5 font-sans text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-foreground/30"
+                className="flex-1 bg-muted border border-border px-3 py-1.5 font-sans text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40"
               />
               <button
                 type="submit"
@@ -273,7 +272,7 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
               <button
                 type="button"
                 onClick={() => setChallenging(false)}
-                className="px-3 py-1.5 border border-border font-mono text-[10px] text-muted-foreground uppercase tracking-widest"
+                className="px-3 py-1.5 border border-border font-mono text-[10px] text-foreground/70 uppercase tracking-widest"
               >
                 Cancel
               </button>
@@ -281,7 +280,7 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
           ) : (
             <button
               onClick={() => setChallenging(true)}
-              className="font-mono text-xs text-muted-foreground/60 hover:text-foreground/80 transition-colors uppercase tracking-widest border border-border/50 px-4 py-2 hover:border-border"
+              className="font-mono text-xs text-foreground/60 hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
             >
               Was I wrong?
             </button>
@@ -307,7 +306,7 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
                 value={compareText}
                 onChange={(e) => setCompareText(e.target.value)}
                 placeholder="Another company"
-                className="w-40 bg-muted border border-border px-3 py-1.5 font-sans text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-foreground/30"
+                className="w-40 bg-muted border border-border px-3 py-1.5 font-sans text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-foreground/40"
               />
               <button
                 type="submit"
@@ -318,7 +317,7 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
               <button
                 type="button"
                 onClick={() => setComparing(false)}
-                className="px-3 py-1.5 border border-border font-mono text-[10px] text-muted-foreground uppercase tracking-widest"
+                className="px-3 py-1.5 border border-border font-mono text-[10px] text-foreground/70 uppercase tracking-widest"
               >
                 Cancel
               </button>
@@ -326,7 +325,7 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
           ) : (
             <button
               onClick={() => setComparing(true)}
-              className="font-mono text-xs text-muted-foreground/60 hover:text-foreground/80 transition-colors uppercase tracking-widest border border-border/50 px-4 py-2 hover:border-border"
+              className="font-mono text-xs text-foreground/60 hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
             >
               Compare another
             </button>
@@ -336,7 +335,7 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
         {/* Share */}
         <button
           onClick={handleShare}
-          className="font-mono text-xs text-muted-foreground/60 hover:text-foreground/80 transition-colors uppercase tracking-widest border border-border/50 px-4 py-2 hover:border-border"
+          className="font-mono text-xs text-foreground/60 hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
         >
           {shared ? 'Copied' : 'Share'}
         </button>
@@ -344,7 +343,7 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
         {/* New case */}
         <button
           onClick={onReset}
-          className="font-mono text-xs text-background bg-foreground/80 hover:bg-foreground transition-colors uppercase tracking-widest px-4 py-2 ml-auto"
+          className="font-mono text-xs text-background bg-foreground hover:bg-foreground/80 transition-colors uppercase tracking-widest px-4 py-2 ml-auto"
         >
           New case
         </button>
@@ -366,14 +365,14 @@ export function VerdictPage({ company, verdict, onReset, onCompare }: VerdictPag
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-border">
         <div className="flex items-center gap-4">
-          <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground/50">
+          <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground">
             Verdict
           </span>
           <span className="font-sans text-base font-semibold text-foreground">{company}</span>
         </div>
         <button
           onClick={onReset}
-          className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50 hover:text-foreground/80 transition-colors"
+          className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
         >
           New case
         </button>

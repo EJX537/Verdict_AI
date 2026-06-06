@@ -30,7 +30,7 @@ export function TopBar({ company, status }: TopBarProps) {
   return (
     <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-background/95 backdrop-blur-sm">
       <div className="flex items-center gap-4">
-        <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground/50">
+        <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground">
           Case
         </span>
         <h1 className="font-sans text-base font-semibold text-foreground tracking-tight">
@@ -50,7 +50,7 @@ export function TopBar({ company, status }: TopBarProps) {
         </div>
 
         {/* Elapsed */}
-        <div className="font-mono text-xs text-muted-foreground/60 tabular-nums">
+        <div className="font-mono text-xs text-muted-foreground tabular-nums">
           {mm}:{ss}
         </div>
       </div>

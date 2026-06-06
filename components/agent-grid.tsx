@@ -37,10 +37,10 @@ function AgentTile({ agent }: AgentTileProps) {
 
         {/* Signal count */}
         <div className="text-right">
-          <span className="font-mono text-lg font-medium text-foreground/80 tabular-nums">
+          <span className="font-mono text-lg font-medium text-foreground tabular-nums">
             {agent.signalCount}
           </span>
-          <span className="font-mono text-[9px] text-muted-foreground/50 ml-1 uppercase tracking-wide">
+          <span className="font-mono text-[9px] text-muted-foreground ml-1 uppercase tracking-wide">
             signals
           </span>
         </div>
@@ -49,10 +49,10 @@ function AgentTile({ agent }: AgentTileProps) {
       {/* Current task */}
       <div className={`font-sans text-xs leading-relaxed transition-colors duration-300 ${
         agent.complete
-          ? 'text-muted-foreground/40 line-through'
+          ? 'text-muted-foreground/60 line-through'
           : agent.active
-          ? 'text-foreground/70'
-          : 'text-muted-foreground/30'
+          ? 'text-foreground/80'
+          : 'text-muted-foreground/50'
       }`}>
         {agent.complete
           ? 'Complete'

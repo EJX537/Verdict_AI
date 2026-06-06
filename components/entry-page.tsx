@@ -72,7 +72,7 @@ export function EntryPage({ onSubmit }: EntryPageProps) {
       {/* Recent cases ticker */}
       <div className="border-t border-border py-3 overflow-hidden">
         <div className="flex items-center gap-3 mb-1 px-6">
-          <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground/50">
+          <span className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground">
             Recent cases
           </span>
         </div>
@@ -84,7 +84,7 @@ export function EntryPage({ onSubmit }: EntryPageProps) {
                 onClick={() => onSubmit(c.company)}
                 className="inline-flex items-center gap-3 px-6 py-1.5 group"
               >
-                <span className="font-sans text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                <span className="font-sans text-sm font-medium text-foreground/70 group-hover:text-foreground transition-colors">
                   {c.company}
                 </span>
                 <span
