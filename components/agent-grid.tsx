@@ -24,10 +24,10 @@ function AgentTile({ agent }: AgentTileProps) {
               <span className={`w-1.5 h-1.5 rounded-full agent-pulse`} style={{ backgroundColor: `var(--agent-${agent.id.replace('_', '-')})` }} />
             )}
             {agent.complete && (
-              <span className="w-1.5 h-1.5 rounded-full bg-foreground/30" />
+              <span className="w-1.5 h-1.5 rounded-full bg-foreground/50" />
             )}
             {!agent.active && !agent.complete && (
-              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/20" />
+              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
             )}
             <span className={`font-mono text-[10px] tracking-[0.2em] uppercase ${config.colorClass}`}>
               {config.name}
@@ -49,10 +49,10 @@ function AgentTile({ agent }: AgentTileProps) {
       {/* Current task */}
       <div className={`font-sans text-xs leading-relaxed transition-colors duration-300 ${
         agent.complete
-          ? 'text-muted-foreground/60 line-through'
+          ? 'text-muted-foreground line-through'
           : agent.active
-          ? 'text-foreground/80'
-          : 'text-muted-foreground/50'
+          ? 'text-foreground'
+          : 'text-muted-foreground'
       }`}>
         {agent.complete
           ? 'Complete'
@@ -82,11 +82,11 @@ function AgentTile({ agent }: AgentTileProps) {
             </div>
           </div>
         ) : agent.complete ? (
-          <span className={`font-mono text-xs ${config.colorClass} opacity-60`}>
+          <span className={`font-mono text-xs ${config.colorClass}`}>
             Score filed
           </span>
         ) : (
-          <span className="font-mono text-[10px] text-muted-foreground/30 uppercase tracking-widest">
+          <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
             Standby
           </span>
         )}

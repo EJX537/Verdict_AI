@@ -110,7 +110,7 @@ function PatternMatch({ closestDead, closestAlive, fork }: PatternMatchProps) {
           <p className="font-mono text-xs text-muted-foreground mb-2">
             {closestDead.match}% match
           </p>
-          <p className="font-sans text-xs text-foreground/70 leading-relaxed">
+          <p className="font-sans text-xs text-foreground/80 leading-relaxed">
             Cause: {closestDead.cause}
           </p>
         </div>
@@ -122,12 +122,12 @@ function PatternMatch({ closestDead, closestAlive, fork }: PatternMatchProps) {
           <p className="font-mono text-xs text-muted-foreground mb-2">
             {closestAlive.match}% match
           </p>
-          <p className="font-sans text-xs text-foreground/70 leading-relaxed">
+          <p className="font-sans text-xs text-foreground/80 leading-relaxed">
             Saved by: {closestAlive.what}
           </p>
         </div>
       </div>
-      <p className="font-sans text-sm text-foreground/75 leading-relaxed border-t border-border pt-4">
+      <p className="font-sans text-sm text-foreground/80 leading-relaxed border-t border-border pt-4">
         {fork}
       </p>
     </div>
@@ -166,7 +166,7 @@ function TimelineScrubber({ events }: TimelineScrubberProps) {
         <p className="font-mono text-[10px] tracking-[0.25em] uppercase text-muted-foreground">
           Timeline
         </p>
-        <span className="font-mono text-[10px] text-muted-foreground/70">
+        <span className="font-mono text-[10px] text-muted-foreground tabular-nums">
           Month {Math.round(visibleUpTo)}
         </span>
       </div>
@@ -184,11 +184,11 @@ function TimelineScrubber({ events }: TimelineScrubberProps) {
               style={{ left: `${pct}%` }}
             >
               <div
-                className={`w-2 h-2 rounded-full border ${ev.critical ? 'border-[oklch(0.65_0.14_25)] bg-[oklch(0.65_0.14_25/0.5)]' : 'border-foreground/40 bg-background'}`}
+                className={`w-2 h-2 rounded-full border ${ev.critical ? 'border-[oklch(0.65_0.14_25)] bg-[oklch(0.65_0.14_25/0.5)]' : 'border-muted-foreground bg-background'}`}
               />
               <div
                 className={`absolute top-3 -translate-x-1/2 whitespace-nowrap font-mono text-[9px] ${
-                  ev.critical ? 'text-[oklch(0.65_0.14_25)]' : 'text-muted-foreground/70'
+                  ev.critical ? 'text-[oklch(0.65_0.14_25)]' : 'text-muted-foreground'
                 }`}
                 style={{ left: '50%' }}
               >
@@ -280,7 +280,7 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
           ) : (
             <button
               onClick={() => setChallenging(true)}
-              className="font-mono text-xs text-foreground/60 hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
+              className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
             >
               Was I wrong?
             </button>
@@ -325,7 +325,7 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
           ) : (
             <button
               onClick={() => setComparing(true)}
-              className="font-mono text-xs text-foreground/60 hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
+              className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
             >
               Compare another
             </button>
@@ -335,7 +335,7 @@ function ActionBar({ company, score, zone, onCompare, onReset }: ActionBarProps)
         {/* Share */}
         <button
           onClick={handleShare}
-          className="font-mono text-xs text-foreground/60 hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
+          className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest border border-border px-4 py-2 hover:border-foreground/40"
         >
           {shared ? 'Copied' : 'Share'}
         </button>

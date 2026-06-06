@@ -51,19 +51,19 @@ export function EntryPage({ onSubmit }: EntryPageProps) {
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               placeholder="Company name or URL"
-              className="w-full bg-transparent px-5 py-4 font-sans text-base text-foreground placeholder:text-muted-foreground/50 focus:outline-none pr-36"
+              className="w-full bg-transparent px-5 py-4 font-sans text-base text-foreground placeholder:text-muted-foreground focus:outline-none pr-36"
               autoComplete="off"
               spellCheck={false}
             />
             <button
               type="submit"
               disabled={!value.trim()}
-              className="absolute right-0 top-0 bottom-0 px-5 font-mono text-xs tracking-widest uppercase text-background bg-foreground disabled:bg-muted disabled:text-muted-foreground/40 transition-colors duration-150 hover:bg-foreground/90"
+              className="absolute right-0 top-0 bottom-0 px-5 font-mono text-xs tracking-widest uppercase text-background bg-foreground disabled:bg-muted disabled:text-muted-foreground transition-colors duration-150 hover:bg-foreground/90"
             >
               Open the case
             </button>
           </div>
-          <p className="mt-3 font-mono text-[11px] tracking-widest uppercase text-muted-foreground/40 text-center">
+          <p className="mt-3 font-mono text-[11px] tracking-widest uppercase text-muted-foreground text-center">
             Four agents. Real signals. One verdict.
           </p>
         </form>
@@ -100,7 +100,7 @@ export function EntryPage({ onSubmit }: EntryPageProps) {
                 >
                   {c.score}
                 </span>
-                <span className="text-muted-foreground/20 text-xs">·</span>
+                <span className="text-border text-xs">·</span>
               </button>
             ))}
           </div>

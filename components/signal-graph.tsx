@@ -110,7 +110,7 @@ export function SignalGraph({ points }: SignalGraphProps) {
         {(Object.entries(AGENT_NAMES) as [keyof typeof AGENT_NAMES, string][]).map(([id, name]) => (
           <div key={id} className="flex items-center gap-1.5">
             <div className="w-3 h-px" style={{ backgroundColor: AGENT_COLORS[id] }} />
-            <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground/70">
+            <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
               {name}
             </span>
           </div>
@@ -126,7 +126,7 @@ export function SignalGraph({ points }: SignalGraphProps) {
           ].map((z) => (
             <div key={z.label} className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-sm opacity-50" style={{ backgroundColor: z.color }} />
-              <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground/70">
+              <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
                 {z.label}
               </span>
             </div>
@@ -152,7 +152,7 @@ export function SignalGraph({ points }: SignalGraphProps) {
           <Line data={data} options={options} />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <span className="font-mono text-[10px] text-muted-foreground/30 uppercase tracking-widest">
+            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
               Awaiting signal data
             </span>
           </div>

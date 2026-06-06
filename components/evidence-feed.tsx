@@ -24,7 +24,7 @@ export function EvidenceFeed({ items }: EvidenceFeedProps) {
       <div className="flex-1 overflow-y-auto">
         {items.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <span className="font-mono text-xs text-muted-foreground/30 uppercase tracking-widest">
+            <span className="font-mono text-xs text-muted-foreground uppercase tracking-widest">
               Awaiting signals
             </span>
           </div>
@@ -66,7 +66,7 @@ export function EvidenceFeed({ items }: EvidenceFeedProps) {
                           </span>
                         )}
                       </div>
-                      <p className={`font-sans text-xs leading-relaxed ${isHigh ? 'text-foreground/85' : 'text-foreground/65'}`}>
+                      <p className={`font-sans text-xs leading-relaxed ${isHigh ? 'text-foreground' : 'text-foreground/80'}`}>
                         {item.finding}
                       </p>
                       <a
