@@ -85,10 +85,10 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
     scales: {
       x: {
         display: true,
-        grid: { color: 'rgba(255,255,255,0.05)', lineWidth: 1, drawTicks: false },
+        grid: { color: 'rgba(255,255,255,0.08)', lineWidth: 1, drawTicks: false },
         border: { display: false },
         ticks: {
-          color: 'rgba(255,255,255,0.3)',
+          color: 'rgba(255,255,255,0.55)',
           font: { family: 'var(--font-mono)', size: 9 },
           maxRotation: 0,
           padding: 6,
@@ -101,10 +101,10 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
         max: 10,
         display: true,
         position: 'right',
-        grid: { color: 'rgba(255,255,255,0.08)', lineWidth: 1, drawTicks: false },
+        grid: { color: 'rgba(255,255,255,0.1)', lineWidth: 1, drawTicks: false },
         border: { display: false },
         ticks: {
-          color: 'rgba(255,255,255,0.35)',
+          color: 'rgba(255,255,255,0.6)',
           font: { family: 'var(--font-mono)', size: 10 },
           stepSize: 1,
           padding: 12,
@@ -207,8 +207,8 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
                     {AGENT_NAMES[id]}
                   </span>
                 </div>
-                <p className="font-sans text-[10px] leading-relaxed text-foreground/70 line-clamp-2">
-                  {item ? item.finding : <span className="text-muted-foreground/50">No signal yet</span>}
+                <p className="font-sans text-[10px] leading-relaxed text-foreground/90 line-clamp-2">
+                  {item ? item.finding : <span className="text-muted-foreground">No signal yet</span>}
                 </p>
               </div>
             )
