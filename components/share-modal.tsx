@@ -83,9 +83,9 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
       {/* Agent score rows — name on left, bar in middle, score on right */}
       {agents.map((a, i) => {
         const cfg = AGENTS.find(ag => ag.id === a.id)
-        const rowY = 144 + i * 18
-        const trackX = 130
-        const trackW = W - 40 - trackX - 48
+        const rowY = 148 + i * 26
+        const trackX = 200
+        const trackW = W - 40 - trackX - 60
         const fillW = (a.score / 10) * trackW
         return (
           <g key={a.id}>
@@ -93,7 +93,7 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
               {(cfg?.name ?? a.id).toUpperCase()}
             </text>
             {/* Track */}
-            <rect x={trackX} y={rowY - 2} width={trackW} height={4} rx={1} fill="rgba(255,255,255,0.08)" dominantBaseline="middle" />
+            <rect x={trackX} y={rowY - 2} width={trackW} height={4} rx={1} fill="rgba(255,255,255,0.08)" />
             {/* Fill */}
             <rect x={trackX} y={rowY - 2} width={fillW} height={4} rx={1} fill={cfg?.chartColor ?? '#fff'} />
             {/* Score value right-aligned */}
@@ -149,6 +149,11 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
       {/* Company — top right */}
       <text x={W - 40} y={52} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={20} fontWeight={700} fill="#ffffff" textAnchor="end" letterSpacing={1}>
         {company.toUpperCase()}
+      </text>
+
+      {/* THE VERDICT — bottom right watermark */}
+      <text x={W - 40} y={H - 14} fontFamily="ui-monospace, monospace" fontSize={10} fill="rgba(255,255,255,0.35)" textAnchor="end" letterSpacing={4} fontWeight={600}>
+        THE VERDICT
       </text>
     </svg>
   )
@@ -283,11 +288,7 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
                 provocativeConfig={provocativeConfig}
                 provocativeAgent={provocativeAgent}
               />
-      {/* THE VERDICT — bottom right */}
-      <text x={W - 40} y={H - 16} fontFamily="ui-monospace, monospace" fontSize={10} fill="rgba(255,255,255,0.4)" textAnchor="end" letterSpacing={4} fontWeight={600}>
-        THE VERDICT
-      </text>
-    </svg>
+            </svg>
           </div>
 
           {/* Verdict URL */}
