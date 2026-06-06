@@ -1,0 +1,45 @@
+# Plan 1 — Follow-ups (data quality + input layer)
+
+Plan 1 (backend diligence core) is complete: real Apify data → deterministic Verdict
+→ OpenAI prose → thesis-fit, 116 unit tests green, live smoke check passed (Stripe →
+Stable 7.0/10, deal_score 82/100). The pipeline is sound. These are data-source /
+input-layer issues to address in Plan 2 (orchestration/input) or a Plan 1.5 polish
+pass — none are pipeline bugs.
+
+## Data-quality follow-ups (from live smoke check)
+
+1. **Wayback returns oldest snapshots.** `ryanclinton/wayback-machine-search` with the
+   default query returns the OLDEST ~500 snapshots (1996-era), so `archive.site_alive`
+   reads neutral and `archive.longevity` is wrong (e.g. 29y for stripe.com). Fix: pass a
+   recent-first / `from=` / `sort=reverse` parameter (verify the actor's input schema)
+   so the 180-day window and cadence signals see current snapshots. **Highest-impact
+   archive fix.**
+
+2. **PR Newswire keyword bleed.** `parseforge/pr-newswire-scraper` keyword="stripe"
+   returns releases that merely contain the word "stripe", tanking `press.organic_ratio`
+   for common-word company names. Fix: tighten the query (exact-name / company filter)
+   or post-filter PR items by company-name match before `mapPressDataset`.
+
+3. **LinkedIn free-tier cap (25 employees).** `harvestapi/linkedin-company-employees`
+   free tier caps at ~25 rows, so founders (e.g. the Collisons for Stripe) may be absent
+   → `people.founder_present` neutral. A paid tier or a founder-specific lookup would
+   make the founder signal reliable.
+
+4. **Crunchbase slug derivation is fragile.** `buildMoneyInput` slugifies the company
+   name → `crunchbase.com/organization/<slug>`. Collisions happen ("Notion" → wrong org;
+   needs `notion-so`). Plan 2's input layer should let the VC supply/confirm the
+   Crunchbase URL (or resolve the slug via search) rather than guessing from the name.
+
+## Known intentional v1 limitations
+
+- Diff-based people signals (exec_departure / backfill) are out — they need a prior-run
+  baseline that v1 doesn't persist. Revisit once InsForge stores run history (Plan 2).
+- Archive signals are snapshot-based (alive / longevity / cadence), not content-diff —
+  the wayback actor provides no page diffs.
+
+## Carried forward to Plan 2 / 3
+
+- InsForge schema + stage machine + API routes + Apify webhook + realtime (Plan 2).
+- VC UI: thesis setup, pipeline, deal detail, outreach composer + send (Plan 3).
+- **Security:** rotate the Apify + OpenAI keys that were shared in plaintext during the
+  Plan 1 session.
