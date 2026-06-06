@@ -195,8 +195,8 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
             {points.length > 0 ? `${points.length} pts` : '—'}
           </span>
         </div>
-        {/* Latest news per agent */}
-        <div className="grid grid-cols-4 divide-x divide-foreground/5">
+        {/* Latest news per agent — fixed height to prevent layout shift */}
+        <div className="grid grid-cols-4 divide-x divide-foreground/5 h-16 overflow-hidden">
           {AGENT_IDS.map((id) => {
             const item = latestNews[id]
             return (
