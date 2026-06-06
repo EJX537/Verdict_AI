@@ -11,6 +11,7 @@ interface ShareModalProps {
 
 export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProps) {
   const [copied, setCopied] = useState(false)
+  const [copiedVisual, setCopiedVisual] = useState(false)
 
   if (!isOpen) return null
 
@@ -23,17 +24,59 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
     Thriving: '#2980b9',
   }
 
+  // Generate visual grid like Wordle (emoji-based)
+  const zoneEmoji: Record<VerdictData['zone'], string> = {
+    Terminal: '🔴',
+    Critical: '🟠',
+    Guarded: '🟡',
+    Stable: '🟢',
+    Thriving: '🔵',
+  }
+
+  // Create a 5x2 grid showing the score and agents
+  const generateVisualGrid = () => {
+    const scoreStr = verdict.score.toString()
+    const zoneEmoji_ = zoneEmoji[verdict.zone]
+    const agentScores = verdict.agents.map(a => Math.round(a.score))
+
+    // Row 1: Score and zone
+    let grid = `${scoreStr}\n`
+    grid += `${zoneEmoji_} ${verdict.zone}\n\n`
+
+    // Row 2: Agent scores as colored squares
+    grid += agentScores.map((score) => {
+      if (score >= 8) return '🟢'
+      if (score >= 6) return '🟡'
+      if (score >= 4) return '🟠'
+      return '🔴'
+    }).join(' ')
+    grid += '\n\n'
+
+    // Company name
+    grid += `${company}\nThe Verdict`
+
+    return grid
+  }
+
+  const visualGrid = generateVisualGrid()
+
   const handleCopyUrl = () => {
     navigator.clipboard?.writeText(shareUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const handleCopyVisual = () => {
+    navigator.clipboard?.writeText(visualGrid)
+    setCopiedVisual(true)
+    setTimeout(() => setCopiedVisual(false), 2000)
+  }
+
   const handleShare = (platform: 'twitter' | 'linkedin') => {
-    const text = `${company} scored ${verdict.score}/100 on The Verdict — ${verdict.zone}`
+    const text = `${visualGrid}\n\n${shareUrl}`
     const urls: Record<string, string> = {
-      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`,
-      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&summary=${encodeURIComponent(visualGrid)}`,
     }
     if (urls[platform]) window.open(urls[platform], '_blank', 'width=600,height=400')
   }
@@ -151,19 +194,35 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
             </div>
           </div>
 
+          {/* Visual grid preview */}
+          <div className="mb-6">
+            <label className="block font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+              Share visual
+            </label>
+            <div className="bg-muted border border-border rounded p-4 mb-3 font-mono text-sm whitespace-pre-wrap text-foreground text-center">
+              {visualGrid}
+            </div>
+            <button
+              onClick={handleCopyVisual}
+              className="w-full cursor-pointer px-4 py-2 bg-foreground text-background font-mono text-[9px] uppercase tracking-widest hover:bg-foreground/85 transition-colors rounded whitespace-nowrap"
+            >
+              {copiedVisual ? 'Copied visual' : 'Copy visual'}
+            </button>
+          </div>
+
           {/* Social share buttons */}
           <div className="flex gap-3">
             <button
               onClick={() => handleShare('twitter')}
               className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors rounded"
             >
-              Twitter
+              Open Twitter
             </button>
             <button
               onClick={() => handleShare('linkedin')}
               className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors rounded"
             >
-              LinkedIn
+              Open LinkedIn
             </button>
           </div>
         </div>
