@@ -77,18 +77,13 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
         {verdict.zone.toUpperCase()}
       </text>
 
-      {/* Company */}
-      <text x={42} y={150} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={20} fontWeight={700} fill="#ffffff" letterSpacing={1}>
-        {company.toUpperCase()}
-      </text>
-
       {/* Divider */}
-      <line x1={40} y1={158} x2={W - 40} y2={158} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
+      <line x1={40} y1={128} x2={W - 40} y2={128} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
 
       {/* Agent score rows — name on left, bar in middle, score on right */}
       {agents.map((a, i) => {
         const cfg = AGENTS.find(ag => ag.id === a.id)
-        const rowY = 172 + i * 18
+        const rowY = 144 + i * 18
         const trackX = 130
         const trackW = W - 40 - trackX - 48
         const fillW = (a.score / 10) * trackW
@@ -151,9 +146,9 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
         </text>
       ))}
 
-      {/* Watermark — top right */}
-      <text x={W - 40} y={52} fontFamily="ui-monospace, monospace" fontSize={14} fill="rgba(255,255,255,0.85)" textAnchor="end" letterSpacing={4} fontWeight={700}>
-        THE VERDICT
+      {/* Company — top right */}
+      <text x={W - 40} y={52} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={20} fontWeight={700} fill="#ffffff" textAnchor="end" letterSpacing={1}>
+        {company.toUpperCase()}
       </text>
     </svg>
   )
@@ -288,7 +283,11 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
                 provocativeConfig={provocativeConfig}
                 provocativeAgent={provocativeAgent}
               />
-            </svg>
+      {/* THE VERDICT — bottom right */}
+      <text x={W - 40} y={H - 16} fontFamily="ui-monospace, monospace" fontSize={10} fill="rgba(255,255,255,0.4)" textAnchor="end" letterSpacing={4} fontWeight={600}>
+        THE VERDICT
+      </text>
+    </svg>
           </div>
 
           {/* Verdict URL */}
