@@ -152,8 +152,8 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
         </text>
       ))}
 
-      {/* Watermark */}
-      <text x={W - 40} y={H - 12} fontFamily="ui-monospace, monospace" fontSize={10} fill="rgba(255,255,255,0.7)" textAnchor="end" letterSpacing={3} fontWeight={600}>
+      {/* Watermark — top right */}
+      <text x={W - 40} y={32} fontFamily="ui-monospace, monospace" fontSize={14} fill="rgba(255,255,255,0.85)" textAnchor="end" letterSpacing={4} fontWeight={700}>
         THE VERDICT
       </text>
     </svg>
