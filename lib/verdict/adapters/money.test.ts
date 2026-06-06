@@ -206,6 +206,106 @@ describe('mapMoneyDataset — money.total_funding_tier', () => {
   })
 })
 
+// ─── boundary tests ──────────────────────────────────────────────────────────
+
+describe('mapMoneyDataset — money.funding_recency (boundary)', () => {
+  // asOf = 2026-06-06T00:00:00.000Z
+  // day 730 = 2024-06-06  (exactly 730 days before asOf → NOT >730 → neutral)
+  // day 731 = 2024-06-05  (exactly 731 days before asOf → >730 → negative)
+  // day 365 = 2025-06-06  (exactly 365 days before asOf → <=365 → positive)
+  // day 366 = 2025-06-05  (exactly 366 days before asOf → NOT <=365 → neutral)
+
+  it('is neutral at exactly 730 days (boundary: 730 is NOT >730)', () => {
+    const f = mapMoneyDataset(
+      company({ lastFundingDate: '2024-06-06' }),
+      AS_OF,
+    ).find((x) => x.signal_id === 'money.funding_recency')
+
+    expect(f).toBeDefined()
+    expect(f!.value).toBe(730)
+    expect(f!.direction).toBe('neutral')
+  })
+
+  it('is survival_negative at exactly 731 days (boundary: 731 IS >730)', () => {
+    const f = mapMoneyDataset(
+      company({ lastFundingDate: '2024-06-05' }),
+      AS_OF,
+    ).find((x) => x.signal_id === 'money.funding_recency')
+
+    expect(f).toBeDefined()
+    expect(f!.value).toBe(731)
+    expect(f!.direction).toBe('survival_negative')
+  })
+
+  it('is survival_positive at exactly 365 days (boundary: 365 IS <=365)', () => {
+    const f = mapMoneyDataset(
+      company({ lastFundingDate: '2025-06-06' }),
+      AS_OF,
+    ).find((x) => x.signal_id === 'money.funding_recency')
+
+    expect(f).toBeDefined()
+    expect(f!.value).toBe(365)
+    expect(f!.direction).toBe('survival_positive')
+  })
+
+  it('is neutral at exactly 366 days (boundary: 366 is NOT <=365)', () => {
+    const f = mapMoneyDataset(
+      company({ lastFundingDate: '2025-06-05' }),
+      AS_OF,
+    ).find((x) => x.signal_id === 'money.funding_recency')
+
+    expect(f).toBeDefined()
+    expect(f!.value).toBe(366)
+    expect(f!.direction).toBe('neutral')
+  })
+})
+
+describe('mapMoneyDataset — money.total_funding_tier (boundary)', () => {
+  it('is survival_positive at exactly 50_000_000 (boundary: >=50M IS positive)', () => {
+    const f = mapMoneyDataset(
+      company({ totalFundingUsd: 50_000_000 }),
+      AS_OF,
+    ).find((x) => x.signal_id === 'money.total_funding_tier')
+
+    expect(f).toBeDefined()
+    expect(f!.value).toBe(50_000_000)
+    expect(f!.direction).toBe('survival_positive')
+  })
+
+  it('is neutral at 49_999_999 (boundary: just below 50M → NOT positive)', () => {
+    const f = mapMoneyDataset(
+      company({ totalFundingUsd: 49_999_999 }),
+      AS_OF,
+    ).find((x) => x.signal_id === 'money.total_funding_tier')
+
+    expect(f).toBeDefined()
+    expect(f!.value).toBe(49_999_999)
+    expect(f!.direction).toBe('neutral')
+  })
+
+  it('is neutral at 2_000_000 (boundary: 2M is NOT <2M)', () => {
+    const f = mapMoneyDataset(
+      company({ totalFundingUsd: 2_000_000 }),
+      AS_OF,
+    ).find((x) => x.signal_id === 'money.total_funding_tier')
+
+    expect(f).toBeDefined()
+    expect(f!.value).toBe(2_000_000)
+    expect(f!.direction).toBe('neutral')
+  })
+
+  it('is survival_negative at 1_999_999 (boundary: just below 2M IS negative)', () => {
+    const f = mapMoneyDataset(
+      company({ totalFundingUsd: 1_999_999 }),
+      AS_OF,
+    ).find((x) => x.signal_id === 'money.total_funding_tier')
+
+    expect(f).toBeDefined()
+    expect(f!.value).toBe(1_999_999)
+    expect(f!.direction).toBe('survival_negative')
+  })
+})
+
 // ─── buildMoneyInput ──────────────────────────────────────────────────────────
 
 describe('buildMoneyInput', () => {

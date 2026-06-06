@@ -40,7 +40,7 @@ function is2xxNonRedirect(snap: WaybackSnapshot): boolean {
     !snap.isRedirect &&
     snap.statusCode !== null &&
     snap.statusCode >= 200 &&
-    snap.statusCode < 400
+    snap.statusCode < 300
   )
 }
 
@@ -102,6 +102,20 @@ export function mapArchivistDataset(
       confidence: 0.8,
       provenance_tier: TIER,
       plain_english: 'Recent archived snapshots show only error or redirect responses — site may be down',
+      as_of: asOf,
+    })
+  } else {
+    // Recent snapshots exist but none qualify as 2xx-alive or error/redirect
+    // (e.g. all have statusCode: null) — status unknown, emit neutral.
+    findings.push({
+      signal_id: 'archive.site_alive',
+      source_agent: 'archivist',
+      value: null,
+      delta: null,
+      direction: 'neutral',
+      confidence: 0.4,
+      provenance_tier: TIER,
+      plain_english: 'No archived snapshots found in the last 180 days — site status unknown',
       as_of: asOf,
     })
   }
