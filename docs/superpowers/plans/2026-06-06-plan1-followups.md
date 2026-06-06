@@ -43,3 +43,22 @@ pass — none are pipeline bugs.
 - VC UI: thesis setup, pipeline, deal detail, outreach composer + send (Plan 3).
 - **Security:** rotate the Apify + OpenAI keys that were shared in plaintext during the
   Plan 1 session.
+
+## Plan 2 follow-ups (from live orchestration smoke)
+
+- **Apify free-tier memory cap (8192 MB).** Each actor run requests ~2 GB; two deals
+  orchestrated concurrently exceed the cap and the second fails with a memory-limit
+  error. v1 works fine serially. Fix: serialize Apify runs (a queue / concurrency gate
+  in the orchestrator) or move to a higher Apify tier before allowing parallel deals.
+- **`after()` durability.** Sourcing takes ~20+ minutes (blocking Apify `.call()` per
+  actor). `after()` keeps the work alive post-response in `next dev` and within Vercel
+  function limits, but a 20-min run will exceed serverless limits in production. Move
+  orchestration to a durable worker (InsForge scheduled poller hitting an advance
+  endpoint, or a queue) — already noted as Plan 2.5.
+- **Intermediate stage visibility.** `sourcing` dominates wall-clock; `profiling →
+  scoring → ready` complete in <1s, so HTTP polling misses them. Each `updateDealStage`
+  fires its own realtime event, so the Plan 3 realtime UI will render every transition;
+  no change needed for the realtime path. If polling is ever the primary consumer,
+  consider finer per-agent stages.
+- **Async Apify (webhook) rework** remains the cleaner long-term model vs the current
+  blocking `apifyRunner` inside `after()` — pairs with the durable-worker follow-up.
