@@ -162,7 +162,7 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
 
 export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProps) {
   const [copied, setCopied] = useState(false)
-  const [sharing, setSharing] = useState<'twitter' | 'linkedin' | null>(null)
+  const [copiedImage, setCopiedImage] = useState(false)
   const svgRef = useRef<SVGSVGElement | null>(null)
 
   if (!isOpen) return null
@@ -220,38 +220,30 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
     a.click()
   }
 
-  // Upload PNG to Blob storage, returns the public URL
-  const uploadImage = async (): Promise<string | null> => {
+  // Copy image to clipboard — user pastes directly into Twitter/LinkedIn composer
+  const handleCopyImage = async () => {
     const blob = await svgToPngBlob()
-    if (!blob) return null
-    const formData = new FormData()
-    formData.append('file', new File([blob], 'verdict.png', { type: 'image/png' }))
-    const res = await fetch('/api/share-image', { method: 'POST', body: formData })
-    if (!res.ok) return null
-    const { url } = await res.json()
-    return url as string
+    if (!blob) return
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob }),
+      ])
+      setCopiedImage(true)
+      setTimeout(() => setCopiedImage(false), 2500)
+    } catch {
+      // Fallback: download instead
+      handleDownload()
+    }
   }
 
-  // Share: upload image, build URL with ogImage param, open platform intent
-  const handleShare = async (platform: 'twitter' | 'linkedin') => {
-    setSharing(platform)
-    try {
-      const imageUrl = await uploadImage()
-      const base = `${typeof window !== 'undefined' ? window.location.origin : ''}/verdict`
-      const params = new URLSearchParams({ id: company })
-      if (imageUrl) params.set('ogImage', imageUrl)
-      const pageUrl = `${base}?${params.toString()}`
-
-      const text = `I ran ${company} through The Verdict — scored ${verdict.score}/100 (${verdict.zone}). Closest dead: ${verdict.closestDead.name}. Closest living: ${verdict.closestAlive.name}.`
-
-      const intentUrls: Record<string, string> = {
-        twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(pageUrl)}`,
-        linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(pageUrl)}`,
-      }
-      if (intentUrls[platform]) window.open(intentUrls[platform], '_blank', 'width=600,height=400')
-    } finally {
-      setSharing(null)
+  // Open Twitter/LinkedIn with prefilled text — user pastes the copied image in the composer
+  const handleShare = (platform: 'twitter' | 'linkedin') => {
+    const text = `I ran ${company} through The Verdict — scored ${verdict.score}/100 (${verdict.zone}). Closest dead: ${verdict.closestDead.name}. Closest living: ${verdict.closestAlive.name}.`
+    const intentUrls: Record<string, string> = {
+      twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
     }
+    if (intentUrls[platform]) window.open(intentUrls[platform], '_blank', 'width=600,height=400')
   }
 
   return (
@@ -321,28 +313,46 @@ export function ShareModal({ isOpen, onClose, company, verdict }: ShareModalProp
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3">
-            <button
-              onClick={handleDownload}
-              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors"
-            >
-              Download PNG
-            </button>
-            <button
-              onClick={() => handleShare('twitter')}
-              disabled={sharing === 'twitter'}
-              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50"
-            >
-              {sharing === 'twitter' ? 'Sharing...' : 'Twitter'}
-            </button>
-            <button
-              onClick={() => handleShare('linkedin')}
-              disabled={sharing === 'linkedin'}
-              className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50"
-            >
-              {sharing === 'linkedin' ? 'Sharing...' : 'LinkedIn'}
-            </button>
+          {/* Step 1: Copy image */}
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+              Step 1 — Copy image to clipboard
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleCopyImage}
+                className="cursor-pointer flex-1 px-4 py-2 bg-foreground text-background font-mono text-[10px] uppercase tracking-widest hover:bg-foreground/85 transition-colors"
+              >
+                {copiedImage ? 'Copied — paste into tweet' : 'Copy image'}
+              </button>
+              <button
+                onClick={handleDownload}
+                className="cursor-pointer px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors"
+              >
+                Download PNG
+              </button>
+            </div>
+          </div>
+
+          {/* Step 2: Open composer */}
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+              Step 2 — Open composer and paste
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleShare('twitter')}
+                className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors"
+              >
+                Open Twitter
+              </button>
+              <button
+                onClick={() => handleShare('linkedin')}
+                className="cursor-pointer flex-1 px-4 py-2 border border-border text-foreground hover:border-foreground/40 font-mono text-[10px] uppercase tracking-widest transition-colors"
+              >
+                Open LinkedIn
+              </button>
+            </div>
           </div>
 
         </div>
