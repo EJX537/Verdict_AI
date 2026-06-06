@@ -207,7 +207,7 @@ export function SignalGraph({ points, evidence }: SignalGraphProps) {
                     {AGENT_NAMES[id]}
                   </span>
                 </div>
-                <p className="font-sans text-[10px] leading-relaxed text-foreground/90 line-clamp-2">
+                <p className="font-sans text-[10px] text-foreground/90 truncate">
                   {item ? item.finding : <span className="text-muted-foreground">No signal yet</span>}
                 </p>
               </div>
