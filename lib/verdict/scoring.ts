@@ -52,6 +52,7 @@ function matchTwin(findings: Finding[], overall: number, alive: boolean): CaseMa
     return { c, shared, distance }
   })
   scored.sort((a, b) => a.distance - b.distance)
+  if (scored.length === 0) return { company: '', distance: Infinity, shared_signals: [] }
   const best = scored[0]
   return { company: best.c.company, distance: Number(best.distance.toFixed(2)), shared_signals: best.shared }
 }
@@ -61,8 +62,10 @@ export function scoreVerdict(findings: Finding[], opts: ScoreOptions = {}): Verd
   const scores = agentScores(findings)
 
   const keys: AgentKey[] = ['money', 'people', 'press', 'archive']
-  const weightSum = keys.reduce((a, k) => a + weights[k], 0) || 1
-  let overall = keys.reduce((a, k) => a + scores[k] * weights[k], 0) / weightSum
+  const rawSum = keys.reduce((a, k) => a + weights[k], 0)
+  const effWeights = rawSum === 0 ? DEFAULT_WEIGHTS : weights
+  const weightSum = keys.reduce((a, k) => a + effWeights[k], 0)
+  let overall = keys.reduce((a, k) => a + scores[k] * effWeights[k], 0) / weightSum
 
   const overrides_fired: string[] = []
   const dead = findings.find(

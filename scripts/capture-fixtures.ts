@@ -33,7 +33,7 @@ async function main() {
   await capture('linkedin', 'harvestapi/linkedin-company-employees', buildPeopleInput(COMPANY) as unknown as Record<string, unknown>)
   await capture('googlenews', 'data_xplorer/google-news-scraper-fast', buildNewsInput(COMPANY) as unknown as Record<string, unknown>)
   await capture('prnewswire', 'parseforge/pr-newswire-scraper', buildPrNewswireInput(COMPANY) as unknown as Record<string, unknown>)
-  await capture('wayback', 'ryanclinton/wayback-machine-search', buildArchivistInput('https://notion.so') as unknown as Record<string, unknown>)
+  await capture('wayback', 'ryanclinton/wayback-machine-search', buildArchivistInput(process.env.COMPANY_URL ?? `https://${COMPANY.toLowerCase()}.com`) as unknown as Record<string, unknown>)
 }
 
 main().catch((err) => { console.error(err); process.exit(1) })

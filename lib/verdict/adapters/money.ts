@@ -104,32 +104,34 @@ export function mapMoneyDataset(
   }
 
   // money.funding_recency — days since lastFundingDate vs asOf.
-  // Emits only when lastFundingDate is present.
+  // Emits only when lastFundingDate is present and parseable (not NaN).
   if (company.lastFundingDate !== undefined) {
     const dayCount = Math.round(daysSince(company.lastFundingDate, asOf))
-    let direction: Finding['direction']
-    let description: string
-    if (dayCount > 730) {
-      direction = 'survival_negative'
-      description = `Last funding was ${dayCount} days ago — more than two years with no new round`
-    } else if (dayCount <= 365) {
-      direction = 'survival_positive'
-      description = `Last funding was ${dayCount} days ago — raised within the past year`
-    } else {
-      direction = 'neutral'
-      description = `Last funding was ${dayCount} days ago — between one and two years`
+    if (!isNaN(dayCount)) {
+      let direction: Finding['direction']
+      let description: string
+      if (dayCount > 730) {
+        direction = 'survival_negative'
+        description = `Last funding was ${dayCount} days ago — more than two years with no new round`
+      } else if (dayCount <= 365) {
+        direction = 'survival_positive'
+        description = `Last funding was ${dayCount} days ago — raised within the past year`
+      } else {
+        direction = 'neutral'
+        description = `Last funding was ${dayCount} days ago — between one and two years`
+      }
+      findings.push({
+        signal_id: 'money.funding_recency',
+        source_agent: 'money_tracker',
+        value: dayCount,
+        delta: null,
+        direction,
+        confidence: 0.5,
+        provenance_tier: TIER,
+        plain_english: description,
+        as_of: asOf,
+      })
     }
-    findings.push({
-      signal_id: 'money.funding_recency',
-      source_agent: 'money_tracker',
-      value: dayCount,
-      delta: null,
-      direction,
-      confidence: 0.5,
-      provenance_tier: TIER,
-      plain_english: description,
-      as_of: asOf,
-    })
   }
 
   // money.investor_quality — count of TOP_TIER substrings across topInvestors ∪ leadInvestors.

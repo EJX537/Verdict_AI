@@ -62,4 +62,23 @@ describe('scoreVerdict', () => {
     expect(v.closest_living.company).toBeTruthy()
     expect(AGENT_OF.money_tracker).toBe('money')
   })
+
+  it('all-zero weights with no findings yields ~5 overall (neutral) and not Deadpool', () => {
+    const zeroWeights = { money: 0, people: 0, press: 0, archive: 0 }
+    const v = scoreVerdict([], { weights: zeroWeights })
+    expect(v.overall_score).toBeCloseTo(5, 5)
+    expect(v.zone).not.toBe('Deadpool')
+  })
+
+  it('all-zero weights produce the same result as equal/default weights for the same findings', () => {
+    const findings = [
+      f({ signal_id: 'money.investor_quality', source_agent: 'money_tracker', direction: 'survival_positive', confidence: 0.8 }),
+      f({ signal_id: 'people.founder_present', source_agent: 'people_watcher', direction: 'survival_negative', confidence: 0.6 }),
+    ]
+    const zeroWeights = { money: 0, people: 0, press: 0, archive: 0 }
+    const vZero = scoreVerdict(findings, { weights: zeroWeights })
+    const vDefault = scoreVerdict(findings)
+    expect(vZero.overall_score).toBeCloseTo(vDefault.overall_score, 5)
+    expect(vZero.zone).toBe(vDefault.zone)
+  })
 })

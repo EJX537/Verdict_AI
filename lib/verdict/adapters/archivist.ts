@@ -115,7 +115,7 @@ export function mapArchivistDataset(
       direction: 'neutral',
       confidence: 0.4,
       provenance_tier: TIER,
-      plain_english: 'No archived snapshots found in the last 180 days — site status unknown',
+      plain_english: 'Recent archived snapshots have no readable status codes — site status unknown',
       as_of: asOf,
     })
   }

@@ -101,6 +101,15 @@ describe('mapMoneyDataset — money.funding_recency', () => {
     )
     expect(f).toBeUndefined()
   })
+
+  it('does not emit when lastFundingDate is non-parseable (e.g. "N/A")', () => {
+    const findings = mapMoneyDataset(company({ lastFundingDate: 'N/A' }), AS_OF)
+    const recency = findings.find((x) => x.signal_id === 'money.funding_recency')
+    expect(recency).toBeUndefined()
+    // Other signals (investor_quality) are still emitted
+    const investorQuality = findings.find((x) => x.signal_id === 'money.investor_quality')
+    expect(investorQuality).toBeDefined()
+  })
 })
 
 // ─── money.investor_quality ───────────────────────────────────────────────────
