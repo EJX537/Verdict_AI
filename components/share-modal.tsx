@@ -73,12 +73,12 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
       </text>
 
       {/* Zone label */}
-      <text x={42} y={118} fontFamily="ui-monospace, monospace" fontSize={11} fill={zoneCol} letterSpacing={4} textAnchor="start">
+      <text x={42} y={116} fontFamily="ui-monospace, monospace" fontSize={12} fill={zoneCol} letterSpacing={4} textAnchor="start">
         {verdict.zone.toUpperCase()}
       </text>
 
       {/* Company */}
-      <text x={42} y={140} fontFamily="ui-monospace, monospace" fontSize={11} fill="rgba(255,255,255,0.4)" letterSpacing={1}>
+      <text x={42} y={150} fontFamily="ui-sans-serif, system-ui, sans-serif" fontSize={20} fontWeight={700} fill="#ffffff" letterSpacing={1}>
         {company.toUpperCase()}
       </text>
 
@@ -142,9 +142,6 @@ function VerdictSVG({ company, verdict, provocativeConfig, provocativeAgent }: {
       <rect x={40} y={326} width={16} height={1} fill={provocativeConfig?.chartColor ?? '#fff'} />
       <text x={62} y={326} fontFamily="ui-monospace, monospace" fontSize={8} fill={provocativeConfig?.chartColor ?? '#fff'} letterSpacing={2} dominantBaseline="middle">
         {(provocativeConfig?.name ?? provocativeAgent.id).toUpperCase()}
-      </text>
-      <text x={W - 40} y={326} fontFamily="ui-monospace, monospace" fontSize={8} fill="rgba(255,255,255,0.4)" textAnchor="end" dominantBaseline="middle">
-        {provocativeAgent.score}/10
       </text>
 
       {/* Agent summary lines */}
