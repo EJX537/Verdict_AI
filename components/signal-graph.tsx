@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
 import {
   Chart as ChartJS,
   LineElement,
@@ -18,17 +17,17 @@ import type { SignalPoint } from '@/lib/mock-data'
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Filler)
 
 const AGENT_COLORS = {
-  archivist: 'oklch(0.72 0.08 220)',
-  money_tracker: 'oklch(0.74 0.12 55)',
-  people_watcher: 'oklch(0.68 0.12 340)',
-  press_room: 'oklch(0.72 0.1 160)',
+  archivist:      '#5b9cf6',
+  money_tracker:  '#f5a623',
+  people_watcher: '#e879a0',
+  press_room:     '#4ade80',
 }
 
 const AGENT_NAMES = {
-  archivist: 'Archivist',
-  money_tracker: 'Money Tracker',
-  people_watcher: 'People Watcher',
-  press_room: 'Press Room',
+  archivist:      'Archivist',
+  money_tracker:  'Money',
+  people_watcher: 'People',
+  press_room:     'Press',
 }
 
 interface SignalGraphProps {
@@ -45,8 +44,8 @@ export function SignalGraph({ points }: SignalGraphProps) {
     backgroundColor: 'transparent',
     borderWidth: 1.5,
     pointRadius: 0,
-    pointHoverRadius: 3,
-    tension: 0.4,
+    pointHoverRadius: 4,
+    tension: 0, // jagged — straight line segments between points
   }))
 
   const data: ChartData<'line'> = { labels, datasets }
@@ -55,10 +54,7 @@ export function SignalGraph({ points }: SignalGraphProps) {
     responsive: true,
     maintainAspectRatio: false,
     animation: false,
-    interaction: {
-      mode: 'index',
-      intersect: false,
-    },
+    interaction: { mode: 'index', intersect: false },
     scales: {
       x: {
         display: false,
@@ -67,16 +63,17 @@ export function SignalGraph({ points }: SignalGraphProps) {
         min: 0,
         max: 10,
         display: true,
+        position: 'left',
         grid: {
-          color: 'oklch(0.22 0 0)',
+          color: 'rgba(255,255,255,0.05)',
           lineWidth: 1,
           drawTicks: false,
         },
-        border: { display: false },
+        border: { display: false, dash: [2, 4] },
         ticks: {
-          color: 'oklch(0.55 0 0)',
+          color: 'rgba(255,255,255,0.3)',
           font: { family: 'var(--font-ibm-plex-mono)', size: 9 },
-          maxTicksLimit: 5,
+          maxTicksLimit: 6,
           padding: 8,
           stepSize: 2,
         },
@@ -85,14 +82,14 @@ export function SignalGraph({ points }: SignalGraphProps) {
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: 'oklch(0.13 0 0)',
-        borderColor: 'oklch(0.22 0 0)',
+        backgroundColor: 'rgba(10,10,10,0.95)',
+        borderColor: 'rgba(255,255,255,0.1)',
         borderWidth: 1,
-        titleColor: 'oklch(0.52 0 0)',
-        bodyColor: 'oklch(0.88 0 0)',
+        titleColor: 'rgba(255,255,255,0.4)',
+        bodyColor: 'rgba(255,255,255,0.85)',
         titleFont: { family: 'var(--font-ibm-plex-mono)', size: 9 },
         bodyFont: { family: 'var(--font-ibm-plex-mono)', size: 10 },
-        padding: 8,
+        padding: 10,
         callbacks: {
           label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}`,
         },
@@ -101,51 +98,44 @@ export function SignalGraph({ points }: SignalGraphProps) {
   }
 
   return (
-    <div className="border-t border-border bg-background px-6 py-3">
-      {/* Legend */}
-      <div className="flex items-center gap-5 mb-3">
-        <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-muted-foreground mr-2">
+    <div className="flex flex-col h-full bg-background border-b border-border">
+
+      {/* Top toolbar — trading terminal style */}
+      <div className="flex items-center gap-4 px-4 py-2 border-b border-border/50 flex-shrink-0">
+        <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-muted-foreground">
           Signal
         </span>
         {(Object.entries(AGENT_NAMES) as [keyof typeof AGENT_NAMES, string][]).map(([id, name]) => (
           <div key={id} className="flex items-center gap-1.5">
-            <div className="w-3 h-px" style={{ backgroundColor: AGENT_COLORS[id] }} />
-            <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
+            <div className="w-5 h-px" style={{ backgroundColor: AGENT_COLORS[id] }} />
+            <span className="font-mono text-[10px] uppercase tracking-wide" style={{ color: AGENT_COLORS[id] }}>
               {name}
             </span>
           </div>
         ))}
-
-        {/* Reference bands legend */}
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-3">
           {[
-            { label: 'Danger', color: 'oklch(0.58 0.14 25)' },
-            { label: 'Guarded', color: 'oklch(0.72 0.12 55)' },
-            { label: 'Stable', color: 'oklch(0.78 0.09 150)' },
-            { label: 'Thriving', color: 'oklch(0.82 0.06 200)' },
+            { label: '0–3', color: 'oklch(0.58 0.14 25)' },
+            { label: '3–6', color: 'oklch(0.72 0.12 55)' },
+            { label: '6–8', color: 'oklch(0.78 0.09 150)' },
+            { label: '8–10', color: 'oklch(0.82 0.06 200)' },
           ].map((z) => (
             <div key={z.label} className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-sm opacity-50" style={{ backgroundColor: z.color }} />
-              <span className="font-mono text-[9px] uppercase tracking-wide text-muted-foreground">
-                {z.label}
-              </span>
+              <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: z.color, opacity: 0.5 }} />
+              <span className="font-mono text-[9px] text-muted-foreground">{z.label}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Chart area */}
-      <div className="h-28 relative">
-        {/* Reference bands */}
-        <div className="absolute inset-0 flex flex-col pointer-events-none">
-          {/* 0-30% = danger */}
-          <div className="absolute bottom-0 left-0 right-8 opacity-[0.04] bg-[oklch(0.58_0.14_25)]" style={{ height: '30%' }} />
-          {/* 30-60% = guarded */}
-          <div className="absolute left-0 right-8 opacity-[0.04] bg-[oklch(0.72_0.12_55)]" style={{ bottom: '30%', height: '30%' }} />
-          {/* 60-80% = stable */}
-          <div className="absolute left-0 right-8 opacity-[0.04] bg-[oklch(0.78_0.09_150)]" style={{ bottom: '60%', height: '20%' }} />
-          {/* 80-100% = thriving */}
-          <div className="absolute left-0 right-8 opacity-[0.04] bg-[oklch(0.82_0.06_200)]" style={{ bottom: '80%', height: '20%' }} />
+      {/* Chart — fills remaining space */}
+      <div className="flex-1 relative min-h-0 px-2 py-2">
+        {/* Zone bands */}
+        <div className="absolute inset-2 pointer-events-none">
+          <div className="absolute bottom-0 left-0 right-0 bg-[oklch(0.58_0.14_25)] opacity-[0.06]" style={{ height: '30%' }} />
+          <div className="absolute left-0 right-0 bg-[oklch(0.72_0.12_55)] opacity-[0.05]" style={{ bottom: '30%', height: '30%' }} />
+          <div className="absolute left-0 right-0 bg-[oklch(0.78_0.09_150)] opacity-[0.04]" style={{ bottom: '60%', height: '20%' }} />
+          <div className="absolute left-0 right-0 bg-[oklch(0.82_0.06_200)] opacity-[0.04]" style={{ bottom: '80%', height: '20%' }} />
         </div>
 
         {points.length > 1 ? (
