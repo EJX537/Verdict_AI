@@ -39,32 +39,32 @@
 }
 
 :root {
-  /* Base palette */
-  --background: oklch(0.09 0 0);
-  --foreground: oklch(0.93 0 0);
-  --card: oklch(0.13 0 0);
-  --card-foreground: oklch(0.93 0 0);
-  --border: oklch(0.22 0 0);
-  --input: oklch(0.18 0 0);
-  --ring: oklch(0.45 0 0);
-  --muted: oklch(0.16 0 0);
-  --muted-foreground: oklch(0.62 0 0);
-  --accent: oklch(0.19 0 0);
-  --accent-foreground: oklch(0.88 0 0);
-  --primary: oklch(0.93 0 0);
-  --primary-foreground: oklch(0.09 0 0);
+  /* Base palette — light green */
+  --background: oklch(0.985 0.006 130);
+  --foreground: oklch(0.27 0.03 145);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.27 0.03 145);
+  --border: oklch(0.90 0.012 140);
+  --input: oklch(0.94 0.008 140);
+  --ring: oklch(0.55 0.08 150);
+  --muted: oklch(0.96 0.006 140);
+  --muted-foreground: oklch(0.48 0.03 145);
+  --accent: oklch(0.92 0.03 145);
+  --accent-foreground: oklch(0.30 0.04 145);
+  --primary: oklch(0.46 0.09 150);
+  --primary-foreground: oklch(0.99 0 0);
 
-  /* Signal zones */
-  --danger: oklch(0.58 0.14 25);
-  --guarded: oklch(0.72 0.12 55);
-  --stable: oklch(0.78 0.09 150);
-  --thriving: oklch(0.82 0.06 200);
+  /* Signal zones — tuned for legibility on light */
+  --danger: oklch(0.55 0.18 25);
+  --guarded: oklch(0.62 0.13 65);
+  --stable: oklch(0.52 0.12 150);
+  --thriving: oklch(0.52 0.10 205);
 
-  /* Agent colors */
-  --agent-archivist: oklch(0.72 0.08 220);
-  --agent-money: oklch(0.74 0.12 55);
-  --agent-people: oklch(0.68 0.12 340);
-  --agent-press: oklch(0.72 0.1 160);
+  /* Agent colors — ~0.55 L so they read as text on white */
+  --agent-archivist: oklch(0.55 0.12 235);
+  --agent-money: oklch(0.58 0.13 65);
+  --agent-people: oklch(0.55 0.16 350);
+  --agent-press: oklch(0.52 0.13 160);
 
   --radius: 0.25rem;
 }
