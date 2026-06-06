@@ -12,7 +12,7 @@ import {
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
 import { useRef, useState, useCallback, useEffect } from 'react'
-import type { SignalPoint } from '@/lib/mock-data'
+import type { SignalPoint, EvidenceItem } from '@/lib/mock-data'
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Filler)
 
@@ -46,12 +46,13 @@ function formatDate(ms: number): string {
 
 interface SignalGraphProps {
   points: SignalPoint[]
+  evidence: EvidenceItem[]
 }
 
 // Investigation "starts" at a fixed offset from now so dates look real
 const INVESTIGATION_START = Date.now() - 24 * 60 * 60 * 1000 // 24h ago
 
-export function SignalGraph({ points }: SignalGraphProps) {
+export function SignalGraph({ points, evidence }: SignalGraphProps) {
   const chartRef = useRef<ChartJS<'line'> | null>(null)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [lockedIndex, setLockedIndex] = useState<number | null>(null)
@@ -63,8 +64,9 @@ export function SignalGraph({ points }: SignalGraphProps) {
   // Build timestamps from t (ms elapsed) + investigation start
   const timestamps = points.map((p) => INVESTIGATION_START + p.t)
 
-  // X labels — show every 5th point to get a dense but readable axis
-  const LABEL_EVERY = Math.max(1, Math.floor(points.length / 20))
+  // X labels — cap at 8 visible labels regardless of point count
+  const MAX_LABELS = 8
+  const LABEL_EVERY = Math.max(1, Math.floor(points.length / MAX_LABELS))
   const labels = points.map((_, i) =>
     i % LABEL_EVERY === 0 || i === points.length - 1
       ? formatDate(timestamps[i])
@@ -164,6 +166,19 @@ export function SignalGraph({ points }: SignalGraphProps) {
   const activePoint = activeIndex !== null ? points[activeIndex] : null
   const activeTs = activeIndex !== null ? timestamps[activeIndex] : null
 
+  // For each agent, find the latest EvidenceItem whose timestamp <= activeTs
+  const latestNewsAtCursor: Record<string, EvidenceItem | null> = {}
+  for (const id of AGENT_IDS) {
+    if (activeTs === null) {
+      latestNewsAtCursor[id] = null
+      continue
+    }
+    const items = evidence
+      .filter((e) => e.agent === id && e.timestamp <= activeTs)
+      .sort((a, b) => b.timestamp - a.timestamp)
+    latestNewsAtCursor[id] = items[0] ?? null
+  }
+
   return (
     <div className="flex flex-col h-full bg-black">
 
@@ -211,30 +226,52 @@ export function SignalGraph({ points }: SignalGraphProps) {
         )}
       </div>
 
-      {/* Bottom status bar — shows values at hover/locked/latest index */}
-      <div className="flex items-center gap-6 px-4 py-2 border-t border-foreground/10 flex-shrink-0 bg-foreground/[0.02] m-3 mt-0 border border-foreground/5">
-        <span className="font-mono text-[10px] text-muted-foreground tabular-nums w-36 flex-shrink-0">
-          {activeTs ? formatDate(activeTs) : '—'}
-        </span>
-        <div className="flex items-center gap-5">
+      {/* Bottom status bar — date + per-agent latest news at cursor */}
+      <div className="flex-shrink-0 border border-foreground/5 bg-foreground/[0.02] m-3 mt-0">
+        {/* Date + scores row */}
+        <div className="flex items-center gap-5 px-4 py-1.5 border-b border-foreground/5">
+          <span className="font-mono text-[10px] text-muted-foreground tabular-nums w-36 flex-shrink-0">
+            {activeTs ? formatDate(activeTs) : '—'}
+          </span>
+          <div className="flex items-center gap-5">
+            {AGENT_IDS.map((id) => {
+              const val = activePoint ? (activePoint as Record<string, number>)[id] : null
+              return (
+                <div key={id} className="flex items-center gap-1.5">
+                  <span className="font-mono text-[10px] text-muted-foreground uppercase">{AGENT_NAMES[id]}</span>
+                  <span
+                    className="font-mono text-[11px] font-medium tabular-nums"
+                    style={{ color: val !== null ? AGENT_COLORS[id] : 'rgba(255,255,255,0.2)' }}
+                  >
+                    {val !== null ? val.toFixed(1) : '—'}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          <span className="ml-auto font-mono text-[10px] text-muted-foreground tabular-nums">
+            {activeIndex !== null ? `${activeIndex + 1} / ${points.length}` : '—'}
+          </span>
+        </div>
+        {/* Latest news per agent at cursor */}
+        <div className="grid grid-cols-4 divide-x divide-foreground/5">
           {AGENT_IDS.map((id) => {
-            const val = activePoint ? (activePoint as Record<string, number>)[id] : null
+            const item = latestNewsAtCursor[id]
             return (
-              <div key={id} className="flex items-center gap-1.5">
-                <span className="font-mono text-[10px] text-muted-foreground uppercase">{AGENT_NAMES[id]}</span>
-                <span
-                  className="font-mono text-[11px] font-medium tabular-nums"
-                  style={{ color: val !== null ? AGENT_COLORS[id] : 'rgba(255,255,255,0.2)' }}
-                >
-                  {val !== null ? val.toFixed(1) : '—'}
-                </span>
+              <div key={id} className="px-3 py-2 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <div className="w-2 h-px flex-shrink-0" style={{ backgroundColor: AGENT_COLORS[id] }} />
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground truncate">
+                    {AGENT_NAMES[id]}
+                  </span>
+                </div>
+                <p className="font-sans text-[10px] leading-relaxed text-foreground/70 line-clamp-2">
+                  {item ? item.finding : <span className="text-muted-foreground/50">No signal yet</span>}
+                </p>
               </div>
             )
           })}
         </div>
-        <span className="ml-auto font-mono text-[10px] text-muted-foreground tabular-nums">
-          {activeIndex !== null ? `${activeIndex + 1} / ${points.length}` : '—'}
-        </span>
       </div>
 
     </div>

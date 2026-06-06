@@ -52,7 +52,7 @@ export function InvestigationRoom({
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Signal chart: takes the lion's share of height */}
           <div className="flex-1 min-h-0">
-            <SignalGraph points={signalPoints} />
+            <SignalGraph points={signalPoints} evidence={evidence} />
           </div>
 
           {/* Agent cards pinned below the chart */}
