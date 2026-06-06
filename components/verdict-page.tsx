@@ -579,7 +579,7 @@ interface VerdictPageProps {
 
 export function VerdictPage({ company, verdict, onReset, onCompare }: VerdictPageProps) {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col gap-12 p-8">
 
       {/* Score + zone header */}
       <ScoreHeader score={verdict.score} zone={verdict.zone} company={company} />
@@ -598,6 +598,9 @@ export function VerdictPage({ company, verdict, onReset, onCompare }: VerdictPag
 
       {/* Pattern match + counterfactual below the timeline */}
       <BottomPanel verdict={verdict} company={company} />
+
+      {/* Spacer that grows to push action bar to bottom */}
+      <div className="flex-grow" />
 
       {/* Action bar */}
       <ActionBar
