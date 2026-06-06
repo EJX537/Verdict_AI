@@ -46,7 +46,7 @@ function ScoreBlock({ score, zone }: ScoreBlockProps) {
         Verdict
       </p>
       <div className="score-reveal">
-        <span className="font-sans text-[9rem] font-light text-foreground leading-none tabular-nums">
+        <span className="font-sans text-[9rem] font-light text-white leading-none tabular-nums">
           {displayed}
         </span>
       </div>
