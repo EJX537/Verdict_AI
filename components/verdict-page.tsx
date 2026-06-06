@@ -48,33 +48,29 @@ const DANGER_HEX = '#c0392b'
 
 // ─── Node layout ─────────────────────────────────────────────────────────────
 
-/** 
+/**
  * For N events, compute each node's (x, y) on the canvas.
- * The path snakes: odd-indexed nodes lean right of center, even lean left.
- * This mirrors the reference image's wave — but oriented vertically.
+ * The path flows LEFT → RIGHT. Each node's x increases evenly.
+ * y oscillates above/below the horizontal midline (the wave).
  */
 function computeNodes(
   events: VerdictData['timeline'],
   cw: number,
   ch: number,
-): { x: number; y: number; side: 'left' | 'right' }[] {
+): { x: number; y: number; side: 'above' | 'below' }[] {
   const n = events.length
-  const padT = 80
-  const padB = 80
-  const usableH = ch - padT - padB
-  const cx = cw / 2
-  // Swing amplitude: how far left/right from center the node sits
-  const amp = Math.min(cx * 0.45, 140)
+  const padL = 60
+  const padR = 60
+  const usableW = cw - padL - padR
+  const cy = ch / 2
+  // Amplitude: how far above/below midline the node sits
+  const amp = Math.min(cy * 0.5, 80)
 
   return events.map((_, i) => {
-    const t = i / (n - 1)
-    const y = padT + t * usableH
-    // Sinusoidal x displacement: nodes alternate sides with smooth transition
-    const side: 'left' | 'right' = i % 2 === 0 ? 'left' : 'right'
-    const xOffset = Math.sin((i / (n - 1)) * Math.PI * (n - 1)) * amp
-    // Alternate sign per node
-    const signedOffset = i % 2 === 0 ? -amp * 0.6 : amp * 0.6
-    return { x: cx + signedOffset, y, side }
+    const x = padL + (i / (n - 1)) * usableW
+    const side: 'above' | 'below' = i % 2 === 0 ? 'above' : 'below'
+    const signedOffset = i % 2 === 0 ? -amp : amp
+    return { x, y: cy + signedOffset, side }
   })
 }
 
@@ -84,7 +80,7 @@ interface TimelineCanvasProps {
   events: VerdictData['timeline']
   zone: VerdictData['zone']
   visible: number
-  nodes: { x: number; y: number; side: 'left' | 'right' }[]
+  nodes: { x: number; y: number; side: 'above' | 'below' }[]
   dims: { w: number; h: number }
 }
 
@@ -128,10 +124,10 @@ function TimelineCanvas({ events, zone, visible, nodes, dims }: TimelineCanvasPr
       const litPts = pts.slice(0, Math.min(visible, pts.length))
       const litPath = buildPath(litPts)
 
-      // Linear gradient from top of lit path to bottom
-      const y0 = litPts[0].y
-      const y1 = litPts[litPts.length - 1].y
-      const grad = ctx.createLinearGradient(0, y0, 0, y1)
+      // Horizontal gradient: left (danger) → right (zone color)
+      const x0 = litPts[0].x
+      const x1 = litPts[litPts.length - 1].x
+      const grad = ctx.createLinearGradient(x0, 0, x1, 0)
       grad.addColorStop(0,   DANGER_HEX)
       grad.addColorStop(0.4, '#e67e22')
       grad.addColorStop(0.7, '#d4ac0d')
@@ -210,14 +206,14 @@ function TimelineCanvas({ events, zone, visible, nodes, dims }: TimelineCanvasPr
       ctx.fill()
       ctx.restore()
 
-      // Connector tick to card
-      const tickLen = 28
-      const tickX1 = node.side === 'left' ? node.x - r : node.x + r
-      const tickX2 = node.side === 'left' ? tickX1 - tickLen : tickX1 + tickLen
+      // Connector tick: vertical line from node up or down toward card
+      const tickLen = 24
+      const tickY1 = node.side === 'above' ? node.y - r : node.y + r
+      const tickY2 = node.side === 'above' ? tickY1 - tickLen : tickY1 + tickLen
       ctx.save()
       ctx.beginPath()
-      ctx.moveTo(tickX1, node.y)
-      ctx.lineTo(tickX2, node.y)
+      ctx.moveTo(node.x, tickY1)
+      ctx.lineTo(node.x, tickY2)
       ctx.strokeStyle = isCritical ? DANGER_HEX + '80' : 'rgba(255,255,255,0.2)'
       ctx.lineWidth = 1
       ctx.stroke()
@@ -241,47 +237,49 @@ function EventCard({
   index,
   isVisible,
   zone,
-  cardWidth,
+  cardHeight,
 }: {
   ev: VerdictData['timeline'][number]
-  node: { x: number; y: number; side: 'left' | 'right' }
+  node: { x: number; y: number; side: 'above' | 'below' }
   index: number
   isVisible: boolean
   zone: VerdictData['zone']
-  cardWidth: number
+  cardHeight: number
 }) {
   const isCritical = !!ev.critical
   const isNow = ev.label === 'Now'
-  const tickLen = 28
+  const tickLen = 24
   const nodeR = isNow || isCritical ? 10 : 7
+  const cardW = 120
 
-  // Card sits on opposite side of node's lean, anchored to tick end
-  const cardLeft = node.side === 'left'
-    ? node.x - nodeR - tickLen - cardWidth
-    : node.x + nodeR + tickLen
+  // Card sits above or below the node, centered on the node's x
+  const cardTop = node.side === 'above'
+    ? node.y - nodeR - tickLen - cardHeight
+    : node.y + nodeR + tickLen
+  const cardLeft = node.x - cardW / 2
 
   return (
     <div
       className="absolute pointer-events-none"
       style={{
         left: cardLeft,
-        top: node.y - 22,
-        width: cardWidth,
+        top: cardTop,
+        width: cardW,
         opacity: isVisible ? 1 : 0,
         transform: isVisible
-          ? 'translateX(0) translateY(0)'
-          : `translateX(${node.side === 'left' ? '16px' : '-16px'})`,
+          ? 'translateY(0)'
+          : `translateY(${node.side === 'above' ? '10px' : '-10px'})`,
         transition: 'opacity 0.35s ease, transform 0.35s ease',
         transitionDelay: `${index * 60}ms`,
       }}
     >
       <div
-        className={`px-3 py-2 border-l-2 ${
+        className={`px-2 py-1.5 border-t-2 text-center ${
           isCritical
-            ? 'border-l-[oklch(0.65_0.14_25)] bg-[oklch(0.65_0.14_25/0.08)]'
+            ? 'border-t-[oklch(0.65_0.14_25)] bg-[oklch(0.65_0.14_25/0.08)]'
             : isNow
-            ? `border-l-[${ZONE_COLORS[zone]}] bg-[oklch(0.18_0_0)]`
-            : 'border-l-border bg-[oklch(0.13_0_0)]'
+            ? `border-t-[${ZONE_COLORS[zone]}] bg-[oklch(0.18_0_0)]`
+            : 'border-t-border bg-[oklch(0.13_0_0)]'
         }`}
       >
         <p
@@ -296,7 +294,7 @@ function EventCard({
           {ev.label}
         </p>
         <p className="font-mono text-[9px] text-muted-foreground mt-0.5 tabular-nums">
-          Month {ev.t}
+          M{ev.t}
         </p>
       </div>
     </div>
@@ -346,11 +344,11 @@ function FlowingTimeline({ events, zone, score }: FlowingTimelineProps) {
     ? computeNodes(events, dims.w, dims.h)
     : []
 
-  // Card width: fits in the space between the canvas edge and the node tick
-  const amp = dims.w > 0 ? Math.min(dims.w / 2 * 0.45, 140) : 140
+  // Card height: fits in the space above/below the node tick
+  const amp = dims.h > 0 ? Math.min(dims.h / 2 * 0.5, 80) : 80
   const nodeR = 10
-  const tickLen = 28
-  const cardWidth = Math.max(100, dims.w / 2 - amp * 0.6 - nodeR - tickLen - 16)
+  const tickLen = 24
+  const cardHeight = Math.max(44, amp - nodeR - tickLen - 8)
 
   return (
     <div ref={containerRef} className="relative w-full h-full">
@@ -371,7 +369,7 @@ function FlowingTimeline({ events, zone, score }: FlowingTimelineProps) {
               index={i}
               isVisible={i < visible}
               zone={zone}
-              cardWidth={cardWidth}
+              cardHeight={cardHeight}
             />
           ))}
         </>
@@ -580,9 +578,6 @@ interface VerdictPageProps {
 }
 
 export function VerdictPage({ company, verdict, onReset, onCompare }: VerdictPageProps) {
-  // Timeline height: enough vertical space per event for readable cards
-  const timelineH = Math.max(900, verdict.timeline.length * 130)
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
 
@@ -593,7 +588,7 @@ export function VerdictPage({ company, verdict, onReset, onCompare }: VerdictPag
       <SignalsRow agents={verdict.agents} />
 
       {/* ── Central timeline (primary focus) ── */}
-      <div className="relative w-full flex-shrink-0" style={{ height: timelineH }}>
+      <div className="relative w-full flex-shrink-0" style={{ height: 340 }}>
         <FlowingTimeline
           events={verdict.timeline}
           zone={verdict.zone}
