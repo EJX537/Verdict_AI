@@ -504,10 +504,11 @@ function BottomPanel({ verdict, company }: {
 
 // ─── Action Bar ───────────────────────────────────────────────────────────────
 
-function ActionBar({ company, score, zone, onCompare, onReset }: {
+function ActionBar({ company, score, zone, verdict, onCompare, onReset }: {
   company: string
   score: number
   zone: VerdictData['zone']
+  verdict: VerdictData
   onCompare: (c: string) => void
   onReset: () => void
 }) {
@@ -572,6 +573,13 @@ function ActionBar({ company, score, zone, onCompare, onReset }: {
       >
         New case
       </button>
+
+      <ShareModal
+        isOpen={shareOpen}
+        onClose={() => setShareOpen(false)}
+        company={company}
+        verdict={verdict}
+      />
     </div>
   )
 }
@@ -615,16 +623,9 @@ export function VerdictPage({ company, verdict, onReset, onCompare }: VerdictPag
         company={company}
         score={verdict.score}
         zone={verdict.zone}
+        verdict={verdict}
         onReset={onReset}
         onCompare={onCompare}
-      />
-
-      {/* Share modal */}
-      <ShareModal
-        isOpen={shareOpen}
-        onClose={() => setShareOpen(false)}
-        company={company}
-        verdict={verdict}
       />
 
     </div>
