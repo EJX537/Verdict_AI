@@ -67,24 +67,40 @@ function computeNodes(
   const n = events.length
   const padL = 60
   const padR = 60
-  const padT = 32
-  const padB = 32
+  const padT = 60
+  const padB = 60
   const usableW = cw - padL - padR
   const usableH = ch - padT - padB
   const centerY = padT + usableH / 2
 
   return events.map((ev, i) => {
-    const x = padL + (i / (n - 1)) * usableW
+    const x = padL + (i / Math.max(1, n - 1)) * usableW
 
     // Log scale: score ∈ [1,100] → [0,1], top of canvas = high health
     const logNorm = Math.log(ev.score + 1) / Math.log(101)
-    const y = padT + (1 - logNorm) * usableH
+    let y: number
 
-    // Card positioning: start at centerY, drift toward top for high scores, bottom for low
-    // side determines whether card renders above or below the curve line
-    // For first event (i=0), card should be at center height
-    // For subsequent events, card moves up (if score is good) or down (if score is poor)
-    const sideMultiplier = logNorm > 0.5 ? -1 : 1 // above (-1) for good scores, below (+1) for poor
+    if (i === 0) {
+      // First event always starts at middle-left
+      y = centerY
+    } else {
+      // Subsequent events trend based on score
+      const prevEvent = events[i - 1]
+      const prevLogNorm = Math.log(prevEvent.score + 1) / Math.log(101)
+      const trendBase = padT + (1 - prevLogNorm) * usableH
+      const scoreBase = padT + (1 - logNorm) * usableH
+      // Blend between previous trend and score-based position
+      y = trendBase * 0.4 + scoreBase * 0.6
+    }
+
+    // Clamp y to bounds with padding for card overflow
+    const cardH = 52
+    const tickLen = 28
+    const nodeR = 10
+    y = Math.max(padT + cardH + tickLen, Math.min(ch - padB - cardH - tickLen, y))
+
+    // side determines whether card renders above or below the curve
+    const sideMultiplier = logNorm > 0.5 ? -1 : 1
     const side: 'above' | 'below' = sideMultiplier === -1 ? 'above' : 'below'
 
     return { x, y, side }
@@ -271,10 +287,20 @@ function EventCard({
   const cardH = 52
 
   // Card sits above or below the node, with extra spacing to avoid overlap
-  const cardTop = node.side === 'above'
+  let cardTop = node.side === 'above'
     ? node.y - nodeR - tickLen - cardH - 2
     : node.y + nodeR + tickLen + 2
-  const cardLeft = node.x - cardW / 2
+  let cardLeft = node.x - cardW / 2
+
+  // Clamp to container bounds (assuming container is the parent with known bounds)
+  // These are conservative bounds to prevent overflow
+  const minTop = 0
+  const maxTop = Number.MAX_SAFE_INTEGER // Will be clamped by overflow: hidden on parent
+  const minLeft = -cardW // Allow slight overflow on left
+  const maxLeft = Number.MAX_SAFE_INTEGER // Allow slight overflow on right
+
+  cardTop = Math.max(minTop, Math.min(maxTop, cardTop))
+  cardLeft = Math.max(minLeft, cardLeft)
 
   return (
     <div
@@ -366,7 +392,7 @@ function FlowingTimeline({ events, zone, score }: FlowingTimelineProps) {
   const cardHeight = 44
 
   return (
-    <div ref={containerRef} className="relative w-full h-full">
+    <div ref={containerRef} className="relative w-full h-full overflow-hidden">
       {dims.w > 0 && (
         <>
           <TimelineCanvas
