@@ -13,34 +13,34 @@ export const AGENTS: AgentConfig[] = [
   {
     id: 'archivist',
     name: 'Archivist',
-    colorClass: 'text-[oklch(0.72_0.08_220)]',
-    bgClass: 'bg-[oklch(0.72_0.08_220/0.08)]',
-    borderClass: 'border-[oklch(0.72_0.08_220/0.3)]',
-    chartColor: 'oklch(0.72 0.08 220)',
+    colorClass: 'text-agent-archivist',
+    bgClass: 'bg-agent-archivist/10',
+    borderClass: 'border-agent-archivist/30',
+    chartColor: 'oklch(0.55 0.12 235)',
   },
   {
     id: 'money_tracker',
     name: 'Money Tracker',
-    colorClass: 'text-[oklch(0.74_0.12_55)]',
-    bgClass: 'bg-[oklch(0.74_0.12_55/0.08)]',
-    borderClass: 'border-[oklch(0.74_0.12_55/0.3)]',
-    chartColor: 'oklch(0.74 0.12 55)',
+    colorClass: 'text-agent-money',
+    bgClass: 'bg-agent-money/10',
+    borderClass: 'border-agent-money/30',
+    chartColor: 'oklch(0.58 0.13 65)',
   },
   {
     id: 'people_watcher',
     name: 'People Watcher',
-    colorClass: 'text-[oklch(0.68_0.12_340)]',
-    bgClass: 'bg-[oklch(0.68_0.12_340/0.08)]',
-    borderClass: 'border-[oklch(0.68_0.12_340/0.3)]',
-    chartColor: 'oklch(0.68 0.12 340)',
+    colorClass: 'text-agent-people',
+    bgClass: 'bg-agent-people/10',
+    borderClass: 'border-agent-people/30',
+    chartColor: 'oklch(0.55 0.16 350)',
   },
   {
     id: 'press_room',
     name: 'Press Room',
-    colorClass: 'text-[oklch(0.72_0.1_160)]',
-    bgClass: 'bg-[oklch(0.72_0.1_160/0.08)]',
-    borderClass: 'border-[oklch(0.72_0.1_160/0.3)]',
-    chartColor: 'oklch(0.72 0.1 160)',
+    colorClass: 'text-agent-press',
+    bgClass: 'bg-agent-press/10',
+    borderClass: 'border-agent-press/30',
+    chartColor: 'oklch(0.52 0.13 160)',
   },
 ]
 
@@ -97,12 +97,11 @@ export function getZone(score: number): VerdictData['zone'] {
 }
 
 export function getScoreTint(score: number): string {
-  // Cool blue-grey (low) → neutral dark (mid) → warm dark (high)
-  if (score < 30) return 'oklch(0.16 0.025 260)'
-  if (score < 50) return 'oklch(0.16 0.02 30)'
-  if (score < 65) return 'oklch(0.15 0.008 60)'
-  if (score < 80) return 'oklch(0.15 0 0)'
-  return 'oklch(0.16 0.012 90)'
+  if (score < 30) return 'oklch(0.97 0.02 25)'
+  if (score < 50) return 'oklch(0.975 0.02 65)'
+  if (score < 65) return 'oklch(0.98 0.012 90)'
+  if (score < 80) return 'oklch(0.98 0.012 150)'
+  return 'oklch(0.97 0.02 150)'
 }
 
 export const RECENT_CASES = [
