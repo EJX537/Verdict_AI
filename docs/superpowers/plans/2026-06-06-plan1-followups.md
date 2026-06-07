@@ -62,3 +62,23 @@ pass — none are pipeline bugs.
   consider finer per-agent stages.
 - **Async Apify (webhook) rework** remains the cleaner long-term model vs the current
   blocking `apifyRunner` inside `after()` — pairs with the durable-worker follow-up.
+
+## Plan 3 security — auth is the root fix (Plan 3.5)
+
+v1 has **no user auth** and the API routes are browser-reachable. Mitigations applied so
+nothing is abuse-by-default; the residual items below are all closed properly only by
+multi-tenant auth + ownership checks (Plan 3.5):
+
+- **Applied:** `/api/outreach` send refused unless `OUTREACH_SEND_TOKEN` set + matching
+  `x-outreach-token` header (was an open email relay); email body HTML-escaped. Copilot
+  `diligenceCompany` requires server-side `COPILOT_DILIGENCE_ENABLED=true` (LLM `confirm`
+  is prompt-injectable) — disabled by default.
+- **Residual (deferred to Plan 3.5 auth):** IDOR on `/api/outreach` draft + `/api/deals`
+  + `/api/chat` (no per-user ownership filter); `toEmail` taken from the request rather
+  than a verified founder email captured during diligence; per-user rate limiting;
+  scoping copilot tool queries to the authenticated tenant. **Not exploitable
+  cross-tenant in single-VC v1** (only one VC's data exists), but must be fixed before
+  multi-tenant. When auth lands: verify session at the top of each route, bind
+  deals/theses/outreach to `owner_id`, filter every query by it, and derive `toEmail`
+  from the deal's founder record.
+- Also still open from earlier: **rotate the Apify + OpenAI keys** shared in plaintext.
