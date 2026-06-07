@@ -156,6 +156,19 @@ export function buildCopilotTools(deps: CopilotToolDeps = defaultCopilotDeps) {
         }
       }
 
+      // Server-side credit-spend gate. The LLM-set `confirm` flag is
+      // prompt-injectable, so it is NOT sufficient authorization on its own.
+      // Copilot-initiated diligence is disabled unless the operator explicitly
+      // enables it server-side. (Proper per-user auth lands with Plan 3.5.)
+      if (process.env.COPILOT_DILIGENCE_ENABLED !== 'true') {
+        return {
+          status: 'disabled',
+          message:
+            'Copilot-initiated diligence is disabled. Start a diligence run from the dashboard, ' +
+            'or set COPILOT_DILIGENCE_ENABLED=true to allow it.',
+        }
+      }
+
       // Fetch thesis so orchestrateDeal has signal weights
       const thesisRow = await store.getThesis(thesisId)
       if (!thesisRow) {

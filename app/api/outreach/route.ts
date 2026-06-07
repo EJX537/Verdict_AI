@@ -21,6 +21,16 @@ import { NextResponse } from 'next/server'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
+// Escape user/LLM-provided text before embedding in email HTML.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 export async function POST(req: Request) {
   const body = await req.json()
 
@@ -29,7 +39,15 @@ export async function POST(req: Request) {
   }
 
   if (body.action === 'send') {
-    return handleSend(body)
+    // v1 has no user auth, and this route is browser-reachable, so an open
+    // `send` path is an email relay. Until multi-tenant auth lands (Plan 3.5),
+    // outbound send requires a server-side shared secret: OUTREACH_SEND_TOKEN
+    // must be set AND the request must carry a matching x-outreach-token header
+    // (only trusted server callers can supply it). Unset/mismatch ⇒ send refused.
+    const token = req.headers.get('x-outreach-token')
+    const authorized =
+      !!process.env.OUTREACH_SEND_TOKEN && token === process.env.OUTREACH_SEND_TOKEN
+    return handleSend(body, authorized)
   }
 
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
@@ -107,12 +125,24 @@ Never mention scores or numbers from the analysis.`
 
 // ─── Send ─────────────────────────────────────────────────────────────────────
 
-async function handleSend(body: {
-  outreachId: string
-  toEmail: string
-  confirm?: boolean
-}) {
+async function handleSend(
+  body: { outreachId: string; toEmail: string; confirm?: boolean },
+  authorized: boolean,
+) {
   const { outreachId, toEmail, confirm } = body
+
+  if (!authorized) {
+    return NextResponse.json(
+      {
+        status: 'forbidden',
+        message:
+          'Outbound email send is disabled until authentication is configured. ' +
+          'Set OUTREACH_SEND_TOKEN and supply a matching x-outreach-token header. ' +
+          'Draft is saved; send manually for now.',
+      },
+      { status: 403 },
+    )
+  }
 
   if (!confirm) {
     return NextResponse.json(
@@ -149,7 +179,7 @@ async function handleSend(body: {
     const { error: sendError } = await client.emails.send({
       to: toEmail,
       subject: row.subject,
-      html: `<pre style="white-space:pre-wrap;font-family:sans-serif">${row.body}</pre>`,
+      html: `<pre style="white-space:pre-wrap;font-family:sans-serif">${escapeHtml(row.body)}</pre>`,
     })
 
     if (sendError) {

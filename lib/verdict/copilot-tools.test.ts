@@ -110,6 +110,8 @@ describe('buildCopilotTools — diligenceCompany (confirm gate)', () => {
     vi.clearAllMocks()
     fakeStore = makeFakeStore()
     fakeOrchestrate.mockResolvedValue(undefined)
+    // The server credit-spend gate must be explicitly enabled; on for these tests.
+    process.env.COPILOT_DILIGENCE_ENABLED = 'true'
   })
 
   it('does NOT create a deal when confirm is false', async () => {
@@ -158,6 +160,24 @@ describe('buildCopilotTools — diligenceCompany (confirm gate)', () => {
 
     expect((result as { status: string }).status).toBe('started')
     expect((result as { dealId: string }).dealId).toBe('deal-test-1')
+  })
+
+  it('does NOT create a deal when the server gate is disabled (even with confirm:true)', async () => {
+    delete process.env.COPILOT_DILIGENCE_ENABLED
+    const { diligenceCompany } = buildCopilotTools({
+      store: fakeStore,
+      orchestrate: fakeOrchestrate,
+    })
+
+    const execute = diligenceCompany.execute!
+    const result = await execute(
+      { company: 'Stripe', thesisId: 'thesis-test-1', confirm: true },
+      TOOL_OPTIONS,
+    )
+
+    expect(fakeStore.createDeal).not.toHaveBeenCalled()
+    expect(fakeOrchestrate).not.toHaveBeenCalled()
+    expect((result as { status: string }).status).toBe('disabled')
   })
 
   it('returns error when thesis not found', async () => {
