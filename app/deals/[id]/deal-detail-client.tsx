@@ -5,6 +5,7 @@ import { useDealRealtime } from '@/lib/verdict/use-deal-realtime'
 import { dealToVerdictData } from '@/lib/verdict/deal-view'
 import { VerdictPage } from '@/components/verdict-page'
 import { ZoneChip } from '@/components/workspace/zone-chip'
+import { OutreachComposer } from '@/components/workspace/outreach-composer'
 import { getZone } from '@/lib/mock-data'
 
 const STAGE_MESSAGES: Record<string, string> = {
@@ -153,15 +154,21 @@ export function DealDetailClient({ dealId }: Props) {
   }
 
   return (
-    <VerdictPage
-      company={deal.company}
-      verdict={verdictData}
-      onReset={() => router.push('/workspace')}
-      onCompare={(company) => {
-        // Navigate to pipeline and open new diligence with company pre-filled
-        // (simplified: just navigate to pipeline)
-        router.push('/workspace')
-      }}
-    />
+    <div>
+      <VerdictPage
+        company={deal.company}
+        verdict={verdictData}
+        onReset={() => router.push('/workspace')}
+        onCompare={(company) => {
+          // Navigate to pipeline and open new diligence with company pre-filled
+          // (simplified: just navigate to pipeline)
+          router.push('/workspace')
+        }}
+      />
+      {/* Outreach composer — only shown when verdict is ready */}
+      <div className="max-w-xl mx-auto px-6 pb-12">
+        <OutreachComposer dealId={dealId} />
+      </div>
+    </div>
   )
 }

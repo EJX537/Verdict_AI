@@ -3,6 +3,34 @@ import type { AgentKey } from './scoring'
 import type { Finding, Verdict } from './types'
 import type { ThesisFit, CandidateProfile } from './thesis-fit'
 
+// ─── Outreach row ─────────────────────────────────────────────────────────────
+
+export interface OutreachRow {
+  id: string
+  deal_id: string
+  subject: string
+  body: string
+  to_email: string | null
+  status: 'draft' | 'ready' | 'sent'
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateOutreachInput {
+  dealId: string
+  subject: string
+  body: string
+  toEmail?: string
+  status?: OutreachRow['status']
+}
+
+export interface UpdateOutreachInput {
+  subject?: string
+  body?: string
+  toEmail?: string
+  status?: OutreachRow['status']
+}
+
 // ─── Row types (mirror the InsForge DB schema) ────────────────────────────────
 
 export interface ThesisRow {
@@ -63,6 +91,10 @@ export interface Store {
   updateDealStage(id: string, stage: string, patch?: Partial<Pick<DealRow, 'findings'>>): Promise<void>
   saveDealResult(id: string, r: { findings: Finding[]; verdict: Verdict; founderSummary: string; thesisFit: ThesisFit }): Promise<void>
   failDeal(id: string, message: string): Promise<void>
+  // Outreach CRUD
+  createOutreach(input: CreateOutreachInput): Promise<OutreachRow>
+  getOutreachByDeal(dealId: string): Promise<OutreachRow[]>
+  updateOutreach(id: string, patch: UpdateOutreachInput): Promise<OutreachRow>
 }
 
 // ─── DB implementation ────────────────────────────────────────────────────────
@@ -177,5 +209,54 @@ export const dbStore: Store = {
       .eq('id', id)
       .select()
     if (error) throw new Error(`failDeal: ${error.message}`)
+  },
+
+  // ─── Outreach ───────────────────────────────────────────────────────────────
+
+  async createOutreach(input) {
+    const { data, error } = await serverClient.database
+      .from('outreach')
+      .insert([
+        {
+          deal_id: input.dealId,
+          subject: input.subject,
+          body: input.body,
+          to_email: input.toEmail ?? null,
+          status: input.status ?? 'draft',
+        },
+      ])
+      .select()
+    if (error) throw new Error(`createOutreach: ${error.message}`)
+    const row = (data as OutreachRow[])[0]
+    if (!row) throw new Error('createOutreach: insert returned no row')
+    return row
+  },
+
+  async getOutreachByDeal(dealId) {
+    const { data, error } = await serverClient.database
+      .from('outreach')
+      .select('*')
+      .eq('deal_id', dealId)
+      .order('created_at', { ascending: false })
+    if (error) throw new Error(`getOutreachByDeal: ${error.message}`)
+    return (data as OutreachRow[]) ?? []
+  },
+
+  async updateOutreach(id, patch) {
+    const payload: Record<string, unknown> = {}
+    if (patch.subject !== undefined) payload.subject = patch.subject
+    if (patch.body !== undefined) payload.body = patch.body
+    if (patch.toEmail !== undefined) payload.to_email = patch.toEmail
+    if (patch.status !== undefined) payload.status = patch.status
+
+    const { data, error } = await serverClient.database
+      .from('outreach')
+      .update(payload)
+      .eq('id', id)
+      .select()
+    if (error) throw new Error(`updateOutreach: ${error.message}`)
+    const row = (data as OutreachRow[])[0]
+    if (!row) throw new Error('updateOutreach: no row returned')
+    return row
   },
 }

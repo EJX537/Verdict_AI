@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Sidebar } from './sidebar'
 import { Topbar } from './topbar'
 import { NewDiligenceDialog } from './new-diligence-dialog'
+import { CopilotPanel } from './copilot'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -27,8 +28,8 @@ export function AppShell({ children }: AppShellProps) {
         </main>
       </div>
 
-      {/* Right rail — empty collapsible placeholder for 3c (Copilot) */}
-      {/* Renders nothing until 3c populates it */}
+      {/* Right rail — collapsible copilot panel (3c) */}
+      <CopilotPanel />
 
       <NewDiligenceDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
     </div>
