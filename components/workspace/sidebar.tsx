@@ -5,9 +5,9 @@ import { usePathname } from 'next/navigation'
 import { LayoutGrid, BookOpen, Settings } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { href: '/workspace', label: 'Pipeline', icon: LayoutGrid },
-  { href: '/workspace/thesis', label: 'Theses', icon: BookOpen },
-  { href: '/workspace/settings', label: 'Settings', icon: Settings },
+  { href: '/', label: 'Pipeline', icon: LayoutGrid },
+  { href: '/thesis', label: 'Theses', icon: BookOpen },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
 export function Sidebar() {
@@ -28,7 +28,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || (href !== '/workspace' && pathname.startsWith(href))
+          const active = pathname === href || (href !== '/' && pathname.startsWith(href))
           return (
             <Link
               key={href}
@@ -49,7 +49,7 @@ export function Sidebar() {
       {/* Footer */}
       <div className="px-5 py-4 border-t border-border">
         <p className="font-mono text-[9px] text-muted-foreground tracking-widest uppercase">
-          Plan 3b
+          Verdict AI
         </p>
       </div>
     </aside>

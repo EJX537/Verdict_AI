@@ -30,3 +30,7 @@ tsconfig.tsbuildinfo
 .roo
 .trae
 .windsurf
+
+# Playwright + local screenshots
+.playwright-mcp/
+*.png

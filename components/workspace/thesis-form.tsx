@@ -72,7 +72,7 @@ export function ThesisForm() {
         const j = await res.json()
         throw new Error(j.error ?? 'Failed to create thesis')
       }
-      router.push('/workspace')
+      router.push('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {

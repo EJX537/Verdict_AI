@@ -135,7 +135,7 @@ export function NewDiligenceDialog({ open, onClose }: NewDiligenceDialogProps) {
               ) : theses.length === 0 ? (
                 <p className="font-mono text-[10px] text-muted-foreground">
                   No theses yet —{' '}
-                  <a href="/workspace/thesis" className="text-primary underline">create one first</a>.
+                  <a href="/thesis" className="text-primary underline">create one first</a>.
                 </p>
               ) : (
                 <select

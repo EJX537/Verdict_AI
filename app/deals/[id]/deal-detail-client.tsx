@@ -45,7 +45,7 @@ export function DealDetailClient({ dealId }: Props) {
           </p>
           <p className="font-sans text-sm text-foreground/80">{error ?? 'Deal not found'}</p>
           <button
-            onClick={() => router.push('/workspace')}
+            onClick={() => router.push('/')}
             className="mt-6 cursor-pointer font-mono text-[10px] uppercase tracking-widest px-4 py-2 border border-border text-foreground hover:border-primary/50 transition-colors"
           >
             Back to pipeline
@@ -65,7 +65,7 @@ export function DealDetailClient({ dealId }: Props) {
           </p>
           <p className="font-sans text-sm text-foreground/80">{deal.stage_error ?? 'Unknown error'}</p>
           <button
-            onClick={() => router.push('/workspace')}
+            onClick={() => router.push('/')}
             className="mt-6 cursor-pointer font-mono text-[10px] uppercase tracking-widest px-4 py-2 border border-border text-foreground hover:border-primary/50 transition-colors"
           >
             Back to pipeline
@@ -84,7 +84,7 @@ export function DealDetailClient({ dealId }: Props) {
       <div className="min-h-screen bg-background p-8">
         {/* Back link */}
         <button
-          onClick={() => router.push('/workspace')}
+          onClick={() => router.push('/')}
           className="cursor-pointer font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors mb-8 inline-flex items-center gap-2"
         >
           ← Pipeline
@@ -158,11 +158,11 @@ export function DealDetailClient({ dealId }: Props) {
       <VerdictPage
         company={deal.company}
         verdict={verdictData}
-        onReset={() => router.push('/workspace')}
+        onReset={() => router.push('/')}
         onCompare={(company) => {
           // Navigate to pipeline and open new diligence with company pre-filled
           // (simplified: just navigate to pipeline)
-          router.push('/workspace')
+          router.push('/')
         }}
       />
       {/* Outreach composer — only shown when verdict is ready */}
